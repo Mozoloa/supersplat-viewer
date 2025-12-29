@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Supersplat Viewer Dev",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "develop"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}

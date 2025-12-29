@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm: develop",
+            "type": "shell",
+            "command": "npm run develop",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "npm: develop",
+            "type": "shell",
+            "command": "npm run develop",
+            "isBackground": true,
+            "group": "build"
+        }
+    ]
+}

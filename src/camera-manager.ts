@@ -3,7 +3,7 @@ import {
     Vec3
 } from 'playcanvas';
 
-import { createRotateTrack } from './animation/create-rotate-track';
+import { createDepthTrack } from './animation/create-depth-track';
 import { AnimController } from './cameras/anim-controller';
 import { Camera, type CameraFrame, type CameraController } from './cameras/camera';
 import { FlyController } from './cameras/fly-controller';
@@ -24,9 +24,10 @@ const createCamera = (position: Vec3, target: Vec3, fov: number) => {
 
 const createFrameCamera = (bbox: BoundingBox, fov: number) => {
     const sceneSize = bbox.halfExtents.length();
-    const distance = sceneSize / Math.sin(fov / 180 * Math.PI * 0.5);
+    // Increase distance by 20% to prevent cropping and align to front (negative Z)
+    const distance = (sceneSize * 1.2) / Math.sin(fov / 180 * Math.PI * 0.5);
     return createCamera(
-        new Vec3(2, 1, 2).normalize().mulScalar(distance).add(bbox.center),
+        new Vec3(0, 0, -1).mulScalar(distance).add(bbox.center),
         bbox.center,
         fov
     );
@@ -43,7 +44,21 @@ class CameraManager {
 
         const camera0 = settings.cameras[0].initial;
         const frameCamera = createFrameCamera(bbox, camera0.fov);
-        const resetCamera = createCamera(new Vec3(camera0.position), new Vec3(camera0.target), camera0.fov);
+
+        let resetCamera: Camera;
+        if (settings.hasStartPose) {
+            // Rotate 180 degrees around the target by flipping X and Z offsets
+            const pos = new Vec3(camera0.position);
+            const initialTarget = new Vec3(camera0.target);
+            const offset = new Vec3().sub2(pos, initialTarget);
+            offset.x *= -1;
+            offset.z *= -1;
+            resetCamera = createCamera(new Vec3().add2(initialTarget, offset), initialTarget, camera0.fov);
+        }  else {
+            // fixed default: no bbox framing (stray splats won't affect the start view)
+            const defaultFov = Math.max(camera0.fov, 80);
+            resetCamera = createCamera(new Vec3(0, 0, 0), new Vec3(0, 0, -1), defaultFov);
+        }
 
         const getAnimTrack = (initial: Camera, isObjectExperience: boolean) => {
             const { animTracks } = settings;
@@ -53,16 +68,16 @@ class CameraManager {
                 // use the first animTrack
                 return animTracks[0];
             } else if (isObjectExperience) {
-                // create basic rotation animation if no anim track is specified
+                // create basic depth animation if no anim track is specified
                 initial.calcFocusPoint(tmpv);
-                return createRotateTrack(initial.position, tmpv, initial.fov);
+                return createDepthTrack(initial.position, tmpv, initial.fov);
             }
             return null;
         };
 
         // object experience starts outside the bounding box
         const isObjectExperience = !bbox.containsPoint(resetCamera.position);
-        const animTrack = getAnimTrack(settings.hasStartPose ? resetCamera : frameCamera, isObjectExperience);
+        const animTrack = getAnimTrack(resetCamera, isObjectExperience);
 
         const controllers = {
             orbit: new OrbitController(),

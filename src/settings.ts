@@ -1,4 +1,4 @@
-import { ExperienceSettings as V1, AnimTrack as AnimTrackV1 } from './schemas/v1';
+ import { ExperienceSettings as V1, AnimTrack as AnimTrackV1 } from './schemas/v1';
 import { ExperienceSettings as V2, AnimTrack as AnimTrackV2 } from './schemas/v2';
 
 const migrateV1 = (settings: V1): V1 => {

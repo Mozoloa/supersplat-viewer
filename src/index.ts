@@ -92,7 +92,7 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
         hqMode: true,
         progress: 0,
         inputMode: 'desktop',
-        cameraMode: 'orbit',
+        cameraMode: 'fly',
         hasAnimation: false,
         animationDuration: 0,
         animationTime: 0,

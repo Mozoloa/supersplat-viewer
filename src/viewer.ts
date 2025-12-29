@@ -261,7 +261,10 @@ class Viewer {
             const dist = vec.dot(cameraEntity.forward);
 
             const far = Math.max(dist + boundRadius, 1e-2);
-            const near = Math.max(dist - boundRadius, far / (1024 * 16));
+            // Fit near/far to the scene, but never allow near clip to get so large
+            // that head-locked UI / close splat fragments get clipped.
+            const nearFit = Math.max(dist - boundRadius, far / (1024 * 16));
+            const near = Math.min(nearFit, 0.05);
 
             cameraEntity.camera.farClip = far;
             cameraEntity.camera.nearClip = near;
