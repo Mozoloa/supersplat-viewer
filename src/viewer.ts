@@ -1,4 +1,5 @@
 import {
+    Asset,
     BoundingBox,
     CameraFrame,
     type CameraComponent,
@@ -31,6 +32,7 @@ import { nearlyEquals } from './core/math';
 import { InputController } from './input-controller';
 import type { ExperienceSettings, PostEffectSettings } from './settings';
 import type { Global } from './types';
+import { loadGsplat } from './gsplat-loader';
 
 // override global pick to pack depth instead of meshInstance id
 const pickDepthGlsl = /* glsl */ `
@@ -127,6 +129,10 @@ const vec = new Vec3();
 class Viewer {
     global: Global;
 
+    sceneBound = new BoundingBox();
+
+    gsplatEntity: Entity = null;
+
     cameraFrame: CameraFrame;
 
     inputController: InputController;
@@ -136,6 +142,112 @@ class Viewer {
     annotations: Annotations;
 
     forceRenderNextFrame = false;
+
+    private applyCamera(camera: Camera) {
+        const cameraEntity = this.global.camera;
+
+        cameraEntity.setPosition(camera.position);
+        cameraEntity.setEulerAngles(camera.angles);
+        cameraEntity.camera.fov = camera.fov;
+
+        // fit clipping planes to bounding box
+        const boundRadius = this.sceneBound.halfExtents.length();
+
+        // calculate the forward distance between the camera to the bound center
+        vec.sub2(this.sceneBound.center, camera.position);
+        const dist = vec.dot(cameraEntity.forward);
+
+        const far = Math.max(dist + boundRadius, 1e-2);
+        // Fit near/far to the scene, but never allow near clip to get so large
+        // that head-locked UI / close splat fragments get clipped.
+        const nearFit = Math.max(dist - boundRadius, far / (1024 * 16));
+        const near = Math.min(nearFit, 0.05);
+
+        cameraEntity.camera.farClip = far;
+        cameraEntity.camera.nearClip = near;
+    }
+
+    async loadSplat(contentUrl: string) {
+        const { app, config, state, events } = this.global;
+
+        if (!contentUrl || contentUrl === config.contentUrl) {
+            return;
+        }
+
+        // keep URL in sync for refresh/share
+        try {
+            const url = new URL(location.href);
+            url.searchParams.set('content', contentUrl);
+            history.replaceState(null, '', url);
+        } catch {
+            // ignore
+        }
+
+        config.contentUrl = contentUrl;
+        config.contents = fetch(contentUrl);
+
+        // destroy previous splat + asset
+        if (this.gsplatEntity) {
+            const oldAsset = (this.gsplatEntity as any).gsplat?.asset as Asset;
+            this.gsplatEntity.destroy();
+            this.gsplatEntity = null;
+            if (oldAsset) {
+                try {
+                    oldAsset.unload();
+                    app.assets.remove(oldAsset);
+                } catch {
+                    // ignore
+                }
+            }
+        }
+
+        state.readyToRender = false;
+        state.progress = 0;
+        app.renderNextFrame = true;
+
+        const entity = await loadGsplat(app, config, (progress: number) => {
+            state.progress = progress;
+        });
+
+        // match XR transform expectations when swapping mid-session
+        if (app.xr.active) {
+            entity.setLocalEulerAngles(180, 0, 0);
+            entity.setLocalPosition(0, 0, 0);
+        }
+
+        this.gsplatEntity = entity;
+
+        // reset scene bound
+        this.sceneBound.center.set(0, 0, 0);
+        this.sceneBound.halfExtents.set(0, 0, 0);
+
+        const gsplat = (entity as any).gsplat as GSplatComponent;
+        const gsplatBbox = gsplat.customAabb;
+        if (gsplatBbox) {
+            this.sceneBound.setFromTransformedAabb(gsplatBbox, entity.getWorldTransform());
+        }
+
+        if (this.cameraManager) {
+            this.cameraManager = new CameraManager(this.global, this.sceneBound);
+            this.applyCamera(this.cameraManager.camera);
+        }
+
+        const { instance } = gsplat;
+        if (instance) {
+            instance.sort(this.global.camera);
+
+            instance.sorter?.on('updated', () => {
+                app.renderNextFrame = true;
+                if (!state.readyToRender) {
+                    state.readyToRender = true;
+                    app.once('frameend', () => {
+                        events.fire('firstFrame');
+                        window.firstFrame?.();
+                    });
+                }
+            });
+        }
+    }
 
     constructor(global: Global, gsplatLoad: Promise<Entity>, skyboxLoad: Promise<void>) {
         this.global = global;
@@ -216,7 +328,6 @@ class Viewer {
 
         const prevProj = new Mat4();
         const prevWorld = new Mat4();
-        const sceneBound = new BoundingBox();
 
         // track the camera state and trigger a render when it changes
         app.on('framerender', () => {
@@ -246,34 +357,20 @@ class Viewer {
             }
         });
 
-        const applyCamera = (camera: Camera) => {
-            const cameraEntity = global.camera;
-
-            cameraEntity.setPosition(camera.position);
-            cameraEntity.setEulerAngles(camera.angles);
-            cameraEntity.camera.fov = camera.fov;
-
-            // fit clipping planes to bounding box
-            const boundRadius = sceneBound.halfExtents.length();
-
-            // calculate the forward distance between the camera to the bound center
-            vec.sub2(sceneBound.center, camera.position);
-            const dist = vec.dot(cameraEntity.forward);
-
-            const far = Math.max(dist + boundRadius, 1e-2);
-            // Fit near/far to the scene, but never allow near clip to get so large
-            // that head-locked UI / close splat fragments get clipped.
-            const nearFit = Math.max(dist - boundRadius, far / (1024 * 16));
-            const near = Math.min(nearFit, 0.05);
-
-            cameraEntity.camera.farClip = far;
-            cameraEntity.camera.nearClip = near;
-        };
-
         // handle application update
         app.on('update', (deltaTime) => {
-            // in xr mode we leave the camera alone
+            // in xr mode, still apply near/far clipping to prevent HUD clipping
             if (app.xr.active) {
+                // Apply clipping planes even in XR to prevent UI clipping
+                const cameraEntity = global.camera;
+                const boundRadius = this.sceneBound.halfExtents.length();
+                vec.sub2(this.sceneBound.center, cameraEntity.getPosition());
+                const dist = vec.dot(cameraEntity.forward);
+                const far = Math.max(dist + boundRadius, 1e-2);
+                const nearFit = Math.max(dist - boundRadius, far / (1024 * 16));
+                const near = Math.min(nearFit, 0.05);
+                cameraEntity.camera.farClip = far;
+                cameraEntity.camera.nearClip = near;
                 return;
             }
 
@@ -285,7 +382,7 @@ class Viewer {
                 this.cameraManager.update(deltaTime, this.inputController.frame);
 
                 // apply to the camera entity
-                applyCamera(this.cameraManager.camera);
+                this.applyCamera(this.cameraManager.camera);
             }
         });
 
@@ -296,12 +393,13 @@ class Viewer {
 
         // wait for the model to load
         Promise.all([gsplatLoad, skyboxLoad]).then((results) => {
+            this.gsplatEntity = results[0];
             const gsplat = results[0].gsplat as GSplatComponent;
 
             // get scene bounding box
             const gsplatBbox = gsplat.customAabb;
             if (gsplatBbox) {
-                sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform());
+                this.sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform());
             }
 
             if (!config.noui) {
@@ -310,8 +408,8 @@ class Viewer {
 
             this.inputController = new InputController(global);
 
-            this.cameraManager = new CameraManager(global, sceneBound);
-            applyCamera(this.cameraManager.camera);
+            this.cameraManager = new CameraManager(global, this.sceneBound);
+            this.applyCamera(this.cameraManager.camera);
 
             const { instance } = gsplat;
             if (instance) {

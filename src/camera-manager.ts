@@ -54,10 +54,14 @@ class CameraManager {
             offset.x *= -1;
             offset.z *= -1;
             resetCamera = createCamera(new Vec3().add2(initialTarget, offset), initialTarget, camera0.fov);
-        }  else {
-            // fixed default: no bbox framing (stray splats won't affect the start view)
-            const defaultFov = Math.max(camera0.fov, 80);
-            resetCamera = createCamera(new Vec3(0, 0, 0), new Vec3(0, 0, -1), defaultFov);
+        } else {
+            // No start pose: don't auto-fit to bbox (stray splats). Start 1m from the default target, in front.
+            const initialTarget = new Vec3(camera0.target);
+            const offset = new Vec3().sub2(new Vec3(camera0.position), initialTarget);
+            offset.x *= -1;
+            offset.z *= -1;
+            offset.normalize().mulScalar(1);
+            resetCamera = createCamera(new Vec3().add2(initialTarget, offset), initialTarget, camera0.fov);
         }
 
         const getAnimTrack = (initial: Camera, isObjectExperience: boolean) => {
