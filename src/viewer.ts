@@ -29,10 +29,10 @@ import { Annotations } from './annotations';
 import { CameraManager } from './camera-manager';
 import { Camera } from './cameras/camera';
 import { nearlyEquals } from './core/math';
+import { loadGsplat } from './gsplat-loader';
 import { InputController } from './input-controller';
 import type { ExperienceSettings, PostEffectSettings } from './settings';
 import type { Global } from './types';
-import { loadGsplat } from './gsplat-loader';
 
 // override global pick to pack depth instead of meshInstance id
 const pickDepthGlsl = /* glsl */ `
@@ -143,6 +143,8 @@ class Viewer {
 
     forceRenderNextFrame = false;
 
+    private xrEverStarted = false;
+
     private applyCamera(camera: Camera) {
         const cameraEntity = this.global.camera;
 
@@ -174,6 +176,16 @@ class Viewer {
             return;
         }
 
+        console.log('[ngty-swap] start', {
+            from: config.contentUrl,
+            to: contentUrl,
+            xrActive: app.xr.active,
+            xrType: app.xr.type,
+            xrEverStarted: this.xrEverStarted,
+            xrSession: !!(app.xr as any).session,
+            visibility: document.visibilityState
+        });
+
         // keep URL in sync for refresh/share
         try {
             const url = new URL(location.href);
@@ -201,7 +213,9 @@ class Viewer {
             }
         }
 
-        state.readyToRender = false;
+        if (!app.xr.active) {
+            state.readyToRender = false;
+        }
         state.progress = 0;
         app.renderNextFrame = true;
 
@@ -247,6 +261,13 @@ class Viewer {
                 }
             });
         }
+
+        console.log('[ngty-swap] end', {
+            xrActive: app.xr.active,
+            xrType: app.xr.type,
+            xrSession: !!(app.xr as any).session,
+            visibility: document.visibilityState
+        });
     }
 
     constructor(global: Global, gsplatLoad: Promise<Entity>, skyboxLoad: Promise<void>) {
@@ -279,6 +300,25 @@ class Viewer {
         // reconfigure camera when entering/exiting XR
         app.xr.on('start', () => this.configureCamera(settings));
         app.xr.on('end', () => this.configureCamera(settings));
+
+        app.xr.on('start', () => {
+            this.xrEverStarted = true;
+            console.log('[ngty-xr] start', {
+                xrActive: app.xr.active,
+                xrType: app.xr.type,
+                xrSession: !!(app.xr as any).session,
+                visibility: document.visibilityState
+            });
+        });
+
+        app.xr.on('end', () => {
+            console.log('[ngty-xr] end', {
+                xrActive: app.xr.active,
+                xrType: app.xr.type,
+                xrSession: !!(app.xr as any).session,
+                visibility: document.visibilityState
+            });
+        });
 
         // handle horizontal fov on canvas resize
         const updateHorizontalFov = () => {
@@ -342,8 +382,8 @@ class Viewer {
                 }
             }
 
-            // suppress rendering till we're ready
-            if (!state.readyToRender) {
+            // suppress rendering till we're ready (but never suppress XR)
+            if (!state.readyToRender && !app.xr.active) {
                 app.renderNextFrame = false;
             }
 

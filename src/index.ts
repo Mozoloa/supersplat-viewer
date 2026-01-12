@@ -122,12 +122,36 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
         channel.addEventListener('message', (event) => {
             const data = (event as MessageEvent).data as any;
             if (data && data.type === 'loadSplat' && typeof data.contentUrl === 'string') {
+                console.log('[ngty-swap] recv', {
+                    contentUrl: data.contentUrl,
+                    xrActive: app.xr.active,
+                    xrType: app.xr.type,
+                    visibility: document.visibilityState
+                });
                 viewer.loadSplat(data.contentUrl);
             }
         });
     } catch {
         // ignore
     }
+
+    // Dev-friendly cross-origin swap (webapp -> viewer) via window.postMessage
+    window.addEventListener('message', (event: MessageEvent) => {
+        // Only accept messages from the opener window (the webapp that launched us)
+        if (window.opener && event.source !== window.opener) return;
+
+        const data = event.data as any;
+        if (data && data.type === 'loadSplat' && typeof data.contentUrl === 'string') {
+            console.log('[ngty-swap] msg', {
+                origin: event.origin,
+                contentUrl: data.contentUrl,
+                xrActive: app.xr.active,
+                xrType: app.xr.type,
+                visibility: document.visibilityState
+            });
+            viewer.loadSplat(data.contentUrl);
+        }
+    });
 
     return viewer;
 };

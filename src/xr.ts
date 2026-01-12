@@ -17,8 +17,7 @@ import {
     STENCILOP_KEEP,
     StencilParameters
 } from 'playcanvas';
-import { XrControllers } from 'playcanvas/scripts/esm/xr-controllers.mjs';
-import { XrNavigation } from 'playcanvas/scripts/esm/xr-navigation.mjs';
+// playcanvas XR script modules are not used here
 
 import { Global } from './types';
 
@@ -136,7 +135,7 @@ const initXr = (global: Global) => {
         ctx.fillText('▲ EXP ▼', 128, 190);
 
         // Right Side: Temperature
-        const tVal = parseInt(temp);
+        const tVal = parseInt(temp, 10);
         ctx.fillStyle = tVal > 0 ? '#ff9900' : (tVal < 0 ? '#00ccff' : 'white');
         ctx.font = 'bold 80px Arial';
         ctx.fillText(temp, 384, 140);
@@ -174,7 +173,7 @@ const initXr = (global: Global) => {
     
     const tintMaterial = new StandardMaterial();
     tintMaterial.emissive = new Color(1, 1, 1); // White base (neutral for Multiply)
-    tintMaterial.opacity = 1.0; 
+    tintMaterial.opacity = 1.0;
     tintMaterial.useLighting = false;
     tintMaterial.depthTest = false;
     tintMaterial.blendType = BLEND_MULTIPLICATIVE;
@@ -211,6 +210,12 @@ const initXr = (global: Global) => {
     // parent.script.create(XrNavigation);
 
     app.xr.on('start', () => {
+        console.log('[ngty-xr.ts] start', {
+            xrActive: app.xr.active,
+            xrType: app.xr.type,
+            xrSession: !!(app.xr as any).session,
+            visibility: document.visibilityState
+        });
         app.autoRender = true;
         activeInputSource = null;
         activeScaleSource = null;
@@ -258,6 +263,12 @@ const initXr = (global: Global) => {
     });
 
     app.xr.on('end', () => {
+        console.log('[ngty-xr.ts] end', {
+            xrActive: app.xr.active,
+            xrType: app.xr.type,
+            xrSession: !!(app.xr as any).session,
+            visibility: document.visibilityState
+        });
         app.autoRender = false;
         activeInputSource = null;
         hudVisible = false;
@@ -428,12 +439,12 @@ const initXr = (global: Global) => {
                 } else {
                     if (Math.abs(x) > 0.1) {
                         // Adjust temperature: -10 to +10, fast rate of change
-                        temperature += x * dt * 10.0; 
+                        temperature += x * dt * 10.0;
                         temperature = Math.max(-10, Math.min(temperature, 10));
                         
                         const targetTint = getTempColor(temperature);
                         // Multiply mode: Lerp from White (no effect) to target color
-                        const intensity = (Math.abs(temperature) / 10) * 0.4; 
+                        const intensity = (Math.abs(temperature) / 10) * 0.4;
                         tintMaterial.emissive.lerp(Color.WHITE, targetTint, intensity);
                         tintMaterial.update();
                         
