@@ -35,6 +35,7 @@ const initUI = (global: Global) => {
         'timelineContainer', 'handle', 'time',
         'buttonContainer',
         'play', 'pause',
+        'splatPlay', 'splatPause',
         'settings', 'settingsPanel',
         'orbitCamera', 'flyCamera',
         'hqCheck', 'hqOption', 'lqCheck', 'lqOption',
@@ -335,9 +336,40 @@ const initUI = (global: Global) => {
         dom.ui.classList.add('hidden');
     }
 
+    // Splat animation controls (for .splatseq files) - simple play/pause
+    dom.splatPlay.addEventListener('click', () => {
+        state.splatAnimationPlaying = true;
+    });
+
+    dom.splatPause.addEventListener('click', () => {
+        state.splatAnimationPlaying = false;
+    });
+
+    // Show/hide splat animation buttons based on state
+    const updateSplatAnimUI = () => {
+        if (state.hasSplatAnimation) {
+            if (state.splatAnimationPlaying) {
+                dom.splatPlay.classList.add('hidden');
+                dom.splatPause.classList.remove('hidden');
+            } else {
+                dom.splatPlay.classList.remove('hidden');
+                dom.splatPause.classList.add('hidden');
+            }
+        } else {
+            dom.splatPlay.classList.add('hidden');
+            dom.splatPause.classList.add('hidden');
+        }
+    };
+
+    events.on('hasSplatAnimation:changed', updateSplatAnimUI);
+    events.on('splatAnimationPlaying:changed', updateSplatAnimUI);
+    updateSplatAnimUI();
+
     // tooltips
     const tooltip = new Tooltip(dom.tooltip);
 
+    tooltip.register(dom.splatPlay, 'Play Animation', 'top');
+    tooltip.register(dom.splatPause, 'Pause Animation', 'top');
     tooltip.register(dom.play, 'Play', 'top');
     tooltip.register(dom.pause, 'Pause', 'top');
     tooltip.register(dom.orbitCamera, 'Orbit Camera', 'top');

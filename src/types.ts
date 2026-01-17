@@ -32,6 +32,9 @@ type State = {
     animationDuration: number;
     animationTime: number;
     animationPaused: boolean;
+    // Splat sequence animation (independent of camera animation)
+    hasSplatAnimation: boolean;
+    splatAnimationPlaying: boolean;
     hasAR: boolean;
     hasVR: boolean;
     isFullscreen: boolean;

@@ -1,9 +1,27 @@
 import { Asset, Entity, type AppBase } from 'playcanvas';
 
-import type { Config } from './types';
+import type { Config, Global } from './types';
+import { AnimatedSplatPlayer } from './animated-splat-player';
+
+/**
+ * Check if a URL points to an animated splat sequence
+ */
+const isAnimatedSplat = (url: string): boolean => {
+    // Strip query params before checking extension
+    const urlWithoutQuery = url.split('?')[0];
+    return urlWithoutQuery.toLowerCase().endsWith('.splatseq');
+};
 
 const loadGsplat = async (app: AppBase, config: Config, progressCallback: (progress: number) => void) => {
     const { contents, contentUrl, unified, aa } = config;
+    
+    // Check for animated splat format
+    if (isAnimatedSplat(contentUrl)) {
+        // Return null - animated splats are handled separately by the viewer
+        // This signals that we need special handling
+        return null;
+    }
+    
     const c = contents as unknown as ArrayBuffer;
     const filename = new URL(contentUrl, location.href).pathname.split('/').pop();
     const data = filename.toLowerCase() === 'meta.json' ? await (await contents).json() : undefined;

@@ -9,6 +9,7 @@ import {
     version as engineVersion
 } from 'playcanvas';
 
+import { AnimatedSplatPlayer } from './animated-splat-player';
 import { observe } from './core/observe';
 import { loadGsplat } from './gsplat-loader';
 import { importSettings } from './settings';
@@ -56,6 +57,8 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
         animationDuration: 0,
         animationTime: 0,
         animationPaused: true,
+        hasSplatAnimation: false,
+        splatAnimationPlaying: false,
         hasAR: false,
         hasVR: false,
         isFullscreen: false,
@@ -84,14 +87,25 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
     // Initialize user interface
     initUI(global);
 
-    // Load model
-    const gsplatLoad = loadGsplat(
-        app,
-        config,
-        (progress: number) => {
-            state.progress = progress;
-        }
-    );
+    // Check if this is an animated splat
+    const isAnimated = config.contentUrl && AnimatedSplatPlayer.isAnimatedSplat(config.contentUrl);
+
+    // Load model - either animated or regular
+    let gsplatLoad: Promise<Entity>;
+    
+    if (isAnimated) {
+        // For animated splats, we'll handle loading in the viewer
+        // Create a placeholder promise that resolves to null
+        gsplatLoad = Promise.resolve(null);
+    } else {
+        gsplatLoad = loadGsplat(
+            app,
+            config,
+            (progress: number) => {
+                state.progress = progress;
+            }
+        );
+    }
 
     // Load skybox
     const skyboxLoad = config.skyboxUrl &&

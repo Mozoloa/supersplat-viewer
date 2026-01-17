@@ -249,11 +249,13 @@ const initXr = (global: Global) => {
         parent.setPosition(0, 0, 0);
         parent.setEulerAngles(0, 0, 0);
 
-        const splat = app.root.findComponent('gsplat')?.entity;
-        if (splat) {
-            targetScale = splat.getLocalScale().x;
-            splat.setLocalEulerAngles(180, 0, 0);
-            splat.setLocalPosition(0, 0, 0);
+        // Initialize ALL gsplat entities (for animated splats)
+        const gsplatComponents = app.root.findComponents('gsplat');
+        for (const comp of gsplatComponents) {
+            const splatEntity = comp.entity;
+            targetScale = splatEntity.getLocalScale().x;
+            splatEntity.setLocalEulerAngles(180, 0, 0);
+            splatEntity.setLocalPosition(0, 0, 0);
         }
 
         if (app.xr.type === 'immersive-ar') {
@@ -289,22 +291,38 @@ const initXr = (global: Global) => {
     app.on('update', (dt) => {
         if (!app.xr.active) return;
 
-        const splat = app.root.findComponent('gsplat')?.entity;
-        if (!splat) return;
+        // Find ALL gsplat entities (for animated splats there are multiple frames)
+        const gsplatComponents = app.root.findComponents('gsplat');
+        if (!gsplatComponents || gsplatComponents.length === 0) return;
+        
+        // Get the currently enabled splat entity (the visible frame)
+        let splat: Entity | null = null;
+        for (const comp of gsplatComponents) {
+            if (comp.entity.enabled) {
+                splat = comp.entity;
+                break;
+            }
+        }
+        if (!splat) {
+            // Fallback to first one if none enabled
+            splat = gsplatComponents[0].entity;
+        }
 
-        // Ensure Splat writes to Stencil (in case it was loaded late)
-        const gsplat = (splat as any).gsplat;
-        if (gsplat && gsplat.instance && gsplat.instance.meshInstance) {
-            const mi = gsplat.instance.meshInstance;
-            if (!mi.stencilFront || mi.stencilFront.func !== FUNC_ALWAYS) {
-                mi.stencilFront = new StencilParameters({
-                    func: FUNC_ALWAYS,
-                    ref: 1,
-                    fail: STENCILOP_REPLACE,
-                    zfail: STENCILOP_REPLACE,
-                    zpass: STENCILOP_REPLACE
-                });
-                mi.stencilBack = mi.stencilFront;
+        // Ensure ALL splats have stencil set up (so they work when their frame is shown)
+        for (const comp of gsplatComponents) {
+            const gsplat = (comp.entity as any).gsplat;
+            if (gsplat && gsplat.instance && gsplat.instance.meshInstance) {
+                const mi = gsplat.instance.meshInstance;
+                if (!mi.stencilFront || mi.stencilFront.func !== FUNC_ALWAYS) {
+                    mi.stencilFront = new StencilParameters({
+                        func: FUNC_ALWAYS,
+                        ref: 1,
+                        fail: STENCILOP_REPLACE,
+                        zfail: STENCILOP_REPLACE,
+                        zpass: STENCILOP_REPLACE
+                    });
+                    mi.stencilBack = mi.stencilFront;
+                }
             }
         }
 
@@ -379,7 +397,7 @@ const initXr = (global: Global) => {
             activeScaleSource = null;
         }
 
-        // Update Splat Position/Rotation
+        // Update Splat Position/Rotation - apply to ALL splat entities
         if (activeInputSource) {
             const inputPos = activeInputSource.getPosition();
             const inputRot = activeInputSource.getRotation();
@@ -393,11 +411,15 @@ const initXr = (global: Global) => {
             
             const currentPos = splat.getPosition();
             currentPos.lerp(currentPos, targetPos, lerpFactor);
-            splat.setPosition(currentPos);
-
+            
             const currentRot = splat.getRotation();
             currentRot.slerp(currentRot, targetRot, lerpFactor);
-            splat.setRotation(currentRot);
+            
+            // Apply to ALL splat entities so frame switches maintain position
+            for (const comp of gsplatComponents) {
+                comp.entity.setPosition(currentPos);
+                comp.entity.setRotation(currentRot);
+            }
         }
 
         // Update Splat Scale
@@ -409,6 +431,11 @@ const initXr = (global: Global) => {
                 targetScale *= (1.0 - y * dt * 0.3); // 0.3 sensitivity
                 targetScale = Math.max(0.01, Math.min(targetScale, 100));
             }
+        }
+
+        // Apply Scale to ALL splat entities
+        for (const comp of gsplatComponents) {
+            comp.entity.setLocalScale(targetScale, targetScale, targetScale);
         }
 
         // Update Exposure (when HUD is visible)

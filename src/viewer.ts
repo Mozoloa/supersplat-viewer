@@ -25,6 +25,7 @@ import {
     platform
 } from 'playcanvas';
 
+import { AnimatedSplatPlayer } from './animated-splat-player';
 import { Annotations } from './annotations';
 import { CameraManager } from './camera-manager';
 import { Camera } from './cameras/camera';
@@ -143,6 +144,9 @@ class Viewer {
 
     forceRenderNextFrame = false;
 
+    // Animated splat player (for .splatseq files)
+    animatedSplatPlayer: AnimatedSplatPlayer | null = null;
+
     private xrEverStarted = false;
 
     private applyCamera(camera: Camera) {
@@ -213,18 +217,39 @@ class Viewer {
             }
         }
 
+        // Destroy previous animated splat player
+        if (this.animatedSplatPlayer) {
+            this.animatedSplatPlayer.destroy();
+            this.animatedSplatPlayer = null;
+        }
+
         if (!app.xr.active) {
             state.readyToRender = false;
         }
         state.progress = 0;
+        state.hasAnimation = false;
         app.renderNextFrame = true;
 
-        const entity = await loadGsplat(app, config, (progress: number) => {
-            state.progress = progress;
-        });
+        // Check if this is an animated splat
+        const isAnimated = AnimatedSplatPlayer.isAnimatedSplat(contentUrl);
+        let entity: Entity;
+
+        if (isAnimated) {
+            // Load animated splat sequence
+            console.log('[ngty-swap] Loading animated splat sequence');
+            this.animatedSplatPlayer = new AnimatedSplatPlayer(this.global);
+            entity = await this.animatedSplatPlayer.load(contentUrl, (progress: number) => {
+                state.progress = progress;
+            });
+        } else {
+            // Load regular gsplat
+            entity = await loadGsplat(app, config, (progress: number) => {
+                state.progress = progress;
+            });
+        }
 
         // match XR transform expectations when swapping mid-session
-        if (app.xr.active) {
+        if (app.xr.active && entity) {
             entity.setLocalEulerAngles(180, 0, 0);
             entity.setLocalPosition(0, 0, 0);
         }
@@ -235,10 +260,12 @@ class Viewer {
         this.sceneBound.center.set(0, 0, 0);
         this.sceneBound.halfExtents.set(0, 0, 0);
 
-        const gsplat = (entity as any).gsplat as GSplatComponent;
-        const gsplatBbox = gsplat.customAabb;
-        if (gsplatBbox) {
-            this.sceneBound.setFromTransformedAabb(gsplatBbox, entity.getWorldTransform());
+        if (entity) {
+            const gsplat = (entity as any).gsplat as GSplatComponent;
+            const gsplatBbox = gsplat?.customAabb;
+            if (gsplatBbox) {
+                this.sceneBound.setFromTransformedAabb(gsplatBbox, entity.getWorldTransform());
+            }
         }
 
         if (this.cameraManager) {
@@ -246,20 +273,31 @@ class Viewer {
             this.applyCamera(this.cameraManager.camera);
         }
 
-        const { instance } = gsplat;
-        if (instance) {
-            instance.sort(this.global.camera);
-
-            instance.sorter?.on('updated', () => {
-                app.renderNextFrame = true;
-                if (!state.readyToRender) {
-                    state.readyToRender = true;
-                    app.once('frameend', () => {
-                        events.fire('firstFrame');
-                        window.firstFrame?.();
-                    });
-                }
+        // Handle ready state for animated and regular splats
+        if (isAnimated) {
+            // Animated splats: ready immediately after first frame loads
+            state.readyToRender = true;
+            app.once('frameend', () => {
+                events.fire('firstFrame');
+                window.firstFrame?.();
             });
+        } else if (entity) {
+            const gsplat = (entity as any).gsplat as GSplatComponent;
+            const { instance } = gsplat;
+            if (instance) {
+                instance.sort(this.global.camera);
+
+                instance.sorter?.on('updated', () => {
+                    app.renderNextFrame = true;
+                    if (!state.readyToRender) {
+                        state.readyToRender = true;
+                        app.once('frameend', () => {
+                            events.fire('firstFrame');
+                            window.firstFrame?.();
+                        });
+                    }
+                });
+            }
         }
 
         console.log('[ngty-swap] end', {
@@ -432,9 +470,52 @@ class Viewer {
         });
 
         // wait for the model to load
-        Promise.all([gsplatLoad, skyboxLoad]).then((results) => {
-            this.gsplatEntity = results[0];
-            const gsplat = results[0].gsplat as GSplatComponent;
+        Promise.all([gsplatLoad, skyboxLoad]).then(async (results) => {
+            const loadedEntity = results[0];
+            
+            // Check if we need to load an animated splat (gsplatLoad returned null)
+            const isAnimated = !loadedEntity && config.contentUrl && AnimatedSplatPlayer.isAnimatedSplat(config.contentUrl);
+            
+            if (isAnimated) {
+                // Load animated splat sequence
+                console.log('[ngty] Loading animated splat sequence on init');
+                this.animatedSplatPlayer = new AnimatedSplatPlayer(global);
+                const animEntity = await this.animatedSplatPlayer.load(config.contentUrl, (progress: number) => {
+                    state.progress = progress;
+                });
+                
+                this.gsplatEntity = animEntity;
+                
+                // Get bounds from first frame
+                if (animEntity) {
+                    const gsplat = (animEntity as any).gsplat as GSplatComponent;
+                    const gsplatBbox = gsplat?.customAabb;
+                    if (gsplatBbox) {
+                        this.sceneBound.setFromTransformedAabb(gsplatBbox, animEntity.getWorldTransform());
+                    }
+                }
+                
+                if (!config.noui) {
+                    this.annotations = new Annotations(global, this.cameraFrame != null);
+                }
+
+                this.inputController = new InputController(global);
+                this.cameraManager = new CameraManager(global, this.sceneBound);
+                this.applyCamera(this.cameraManager.camera);
+                
+                // Ready immediately for animated splats
+                state.readyToRender = true;
+                app.once('frameend', () => {
+                    events.fire('firstFrame');
+                    window.firstFrame?.();
+                });
+                
+                return;
+            }
+            
+            // Regular splat loading
+            this.gsplatEntity = loadedEntity;
+            const gsplat = loadedEntity.gsplat as GSplatComponent;
 
             // get scene bounding box
             const gsplatBbox = gsplat.customAabb;
