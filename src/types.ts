@@ -35,6 +35,7 @@ type State = {
     // Splat sequence animation (independent of camera animation)
     hasSplatAnimation: boolean;
     splatAnimationPlaying: boolean;
+    splatAnimationMode: 'pingpong' | 'loop' | 'paused';  // Playback mode for splat animation
     hasAR: boolean;
     hasVR: boolean;
     isFullscreen: boolean;

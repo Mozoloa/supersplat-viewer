@@ -56,9 +56,101 @@ const initXr = (global: Global) => {
     let exposure = 0.5;
     let temperature = 0; // Range -10 to +10
 
+    // Store current XRFrame for SteamVR fallback (PlayCanvas doesn't expose it)
+    let currentXRFrame: XRFrame | null = null;
+
+    // Hook into the XR session's requestAnimationFrame to capture the frame
+    app.xr.on('start', () => {
+        const session = (app.xr as any).session as XRSession;
+        if (session) {
+            const originalRAF = session.requestAnimationFrame.bind(session);
+            session.requestAnimationFrame = (callback: XRFrameRequestCallback) => {
+                return originalRAF((time: number, frame: XRFrame) => {
+                    currentXRFrame = frame;
+                    callback(time, frame);
+                });
+            };
+        }
+    });
+    app.xr.on('end', () => {
+        currentXRFrame = null;
+    });
+
+    // Helper to get controller world position/rotation from XRInputSource
+    // Uses targetRaySpace which is more reliably available than gripSpace
+    const getControllerPose = (inputSource: any): { pos: Vec3, rot: Quat } | null => {
+        try {
+            // First try PlayCanvas methods
+            const pos = inputSource.getPosition();
+            const rot = inputSource.getRotation();
+            if (pos && rot) {
+                return { pos, rot };
+            }
+        } catch (e) {
+            // PlayCanvas internal error
+        }
+        
+        // Fallback: access raw WebXR directly using captured frame
+        try {
+            const xrManager = app.xr as any;
+            const session = xrManager?.session as XRSession | null;
+            const refSpace = xrManager?._referenceSpace as XRReferenceSpace | null;
+            
+            if (!session || !currentXRFrame || !refSpace) {
+                return null;
+            }
+            
+            // Find matching native input source by comparing gamepad or handedness
+            const pcGamepad = inputSource.gamepad;
+            let nativeSource: XRInputSource | null = null;
+            
+            for (const native of session.inputSources) {
+                // Match by gamepad reference or handedness
+                if (native.gamepad === pcGamepad || 
+                    (inputSource.handedness && native.handedness === inputSource.handedness)) {
+                    nativeSource = native;
+                    break;
+                }
+            }
+            
+            if (!nativeSource) {
+                // Just use first available
+                nativeSource = session.inputSources[0] || null;
+            }
+            
+            if (!nativeSource) {
+                return null;
+            }
+            
+            // Try gripSpace first, then targetRaySpace
+            const space = nativeSource.gripSpace || nativeSource.targetRaySpace;
+            if (!space) {
+                return null;
+            }
+            
+            const pose = currentXRFrame.getPose(space, refSpace);
+            if (!pose) {
+                return null;
+            }
+            
+            const p = pose.transform.position;
+            const o = pose.transform.orientation;
+            
+            return {
+                pos: new Vec3(p.x, p.y, p.z),
+                rot: new Quat(o.x, o.y, o.z, o.w)
+            };
+        } catch (e) {
+            console.warn('[xr] getControllerPose fallback failed:', e);
+            return null;
+        }
+    };
+
     let hudVisible = false;
-    let buttonWasPressed = false;
+    let hudButtonWasPressed = false;
+    let playbackButtonWasPressed = false;
     let resetWasPressed = false;
+    let lastPlayingMode: 'pingpong' | 'loop' = 'pingpong'; // Track mode before pause
 
     const getTempColor = (t: number) => {
         const color = new Color(1, 1, 1); // White at 0
@@ -333,19 +425,48 @@ const initXr = (global: Global) => {
         }
 
         // Handle Grip/Trigger Start
-        let anyButtonPressed = false;
+        let anyHudButtonPressed = false;
+        let anyPlaybackButtonPressed = false;
         let anyResetPressed = false;
         for (const inputSource of app.xr.input.inputSources) {
             const gripPressed = inputSource.gamepad?.buttons[1]?.pressed; // Grip button
             const triggerPressed = inputSource.gamepad?.buttons[0]?.pressed; // Trigger button
             
-            // HUD Toggle (A/B/X/Y buttons)
-            const buttonPressed = inputSource.gamepad?.buttons[4]?.pressed || inputSource.gamepad?.buttons[5]?.pressed;
-            if (buttonPressed) {
-                anyButtonPressed = true;
-                if (!buttonWasPressed) {
+            // HUD Toggle (A or X buttons - button 4)
+            const hudButtonPressed = inputSource.gamepad?.buttons[4]?.pressed;
+            if (hudButtonPressed) {
+                anyHudButtonPressed = true;
+                if (!hudButtonWasPressed) {
                     hudVisible = !hudVisible;
                     hud.enabled = hudVisible;
+                }
+            }
+            
+            // Playback Mode Cycle (B or Y buttons - button 5)
+            // Cycle: pingpong -> paused -> loop -> paused -> pingpong...
+            const playbackButtonPressed = inputSource.gamepad?.buttons[5]?.pressed;
+            if (playbackButtonPressed) {
+                anyPlaybackButtonPressed = true;
+                if (!playbackButtonWasPressed && state.hasSplatAnimation) {
+                    const currentMode = state.splatAnimationMode;
+                    if (currentMode === 'pingpong') {
+                        lastPlayingMode = 'pingpong';
+                        state.splatAnimationMode = 'paused';
+                        console.log('[xr] Playback: PAUSED (was pingpong)');
+                    } else if (currentMode === 'loop') {
+                        lastPlayingMode = 'loop';
+                        state.splatAnimationMode = 'paused';
+                        console.log('[xr] Playback: PAUSED (was loop)');
+                    } else if (currentMode === 'paused') {
+                        // Resume with the OTHER mode
+                        if (lastPlayingMode === 'pingpong') {
+                            state.splatAnimationMode = 'loop';
+                            console.log('[xr] Playback: LOOP');
+                        } else {
+                            state.splatAnimationMode = 'pingpong';
+                            console.log('[xr] Playback: PING-PONG');
+                        }
+                    }
                 }
             }
 
@@ -371,16 +492,20 @@ const initXr = (global: Global) => {
                 }
             }
 
-            // Grab
+            // Grab - use getControllerPose helper for SteamVR compatibility
             if (!hudVisible && gripPressed && !activeInputSource) {
-                activeInputSource = inputSource;
+                const pose = getControllerPose(inputSource);
                 
-                // Calculate offset from controller to splat
-                invInputRot.copy(inputSource.getRotation()).invert();
-                splatOffsetPos.sub2(splat.getPosition(), inputSource.getPosition());
-                invInputRot.transformVector(splatOffsetPos, splatOffsetPos);
-                
-                splatOffsetRot.mul2(invInputRot, splat.getRotation());
+                if (pose) {
+                    activeInputSource = inputSource;
+                    
+                    // Calculate offset from controller to splat
+                    invInputRot.copy(pose.rot).invert();
+                    splatOffsetPos.sub2(splat.getPosition(), pose.pos);
+                    invInputRot.transformVector(splatOffsetPos, splatOffsetPos);
+                    
+                    splatOffsetRot.mul2(invInputRot, splat.getRotation());
+                }
             }
 
             // Scale
@@ -399,26 +524,30 @@ const initXr = (global: Global) => {
 
         // Update Splat Position/Rotation - apply to ALL splat entities
         if (activeInputSource) {
-            const inputPos = activeInputSource.getPosition();
-            const inputRot = activeInputSource.getRotation();
+            const pose = getControllerPose(activeInputSource);
 
-            inputRot.transformVector(splatOffsetPos, targetPos);
-            targetPos.add(inputPos);
-            targetRot.mul2(inputRot, splatOffsetRot);
+            // No pose? Skip this frame
+            if (!pose) {
+                // Don't release, just skip - might recover next frame
+            } else {
+                pose.rot.transformVector(splatOffsetPos, targetPos);
+                targetPos.add(pose.pos);
+                targetRot.mul2(pose.rot, splatOffsetRot);
 
-            // Smoothing (lerp/slerp) - Higher value = less lag
-            const lerpFactor = Math.min(dt * 4.5, 1);
-            
-            const currentPos = splat.getPosition();
-            currentPos.lerp(currentPos, targetPos, lerpFactor);
-            
-            const currentRot = splat.getRotation();
-            currentRot.slerp(currentRot, targetRot, lerpFactor);
-            
-            // Apply to ALL splat entities so frame switches maintain position
-            for (const comp of gsplatComponents) {
-                comp.entity.setPosition(currentPos);
-                comp.entity.setRotation(currentRot);
+                // Smoothing (lerp/slerp) - Higher value = less lag
+                const lerpFactor = Math.min(dt * 4.5, 1);
+                
+                const currentPos = splat.getPosition();
+                currentPos.lerp(currentPos, targetPos, lerpFactor);
+                
+                const currentRot = splat.getRotation();
+                currentRot.slerp(currentRot, targetRot, lerpFactor);
+                
+                // Apply to ALL splat entities so frame switches maintain position
+                for (const comp of gsplatComponents) {
+                    comp.entity.setPosition(currentPos);
+                    comp.entity.setRotation(currentRot);
+                }
             }
         }
 
@@ -488,7 +617,8 @@ const initXr = (global: Global) => {
         // Apply Scale Directly
         splat.setLocalScale(targetScale, targetScale, targetScale);
 
-        buttonWasPressed = anyButtonPressed;
+        hudButtonWasPressed = anyHudButtonPressed;
+        playbackButtonWasPressed = anyPlaybackButtonPressed;
         resetWasPressed = anyResetPressed;
     });
 

@@ -36,6 +36,8 @@ class AnimatedSplatPlayer {
 
     private playbackTime: number = 0;
 
+    private playbackDirection: number = 1; // 1 = forward, -1 = backward (for pingpong)
+
     private zipData: Map<string, ArrayBuffer> = new Map();
 
     // Preloading
@@ -124,6 +126,8 @@ class AnimatedSplatPlayer {
         // Update state for splat animation controls (independent of camera animation)
         state.hasSplatAnimation = true;
         state.splatAnimationPlaying = true;
+        state.splatAnimationMode = 'pingpong'; // Default to pingpong for seamless looping
+        this.playbackDirection = 1;
 
         // Load first frame immediately
         progressCallback(60);
@@ -353,19 +357,36 @@ class AnimatedSplatPlayer {
         app.on('update', (dt) => {
             if (!this.manifest || !state.hasSplatAnimation) return;
 
-            // Handle playback
-            // Splat animation plays independently of camera mode
-            if (state.splatAnimationPlaying) {
-                this.playbackTime += dt;
-                
-                // Loop
+            // Handle playback based on mode
+            const mode = state.splatAnimationMode;
+            
+            if (mode !== 'paused') {
                 const duration = this.manifest.frame_count / this.manifest.fps;
-                if (this.playbackTime >= duration) {
-                    this.playbackTime = 0;
+                
+                if (mode === 'pingpong') {
+                    // Ping-pong: forward then backward
+                    this.playbackTime += dt * this.playbackDirection;
+                    
+                    if (this.playbackTime >= duration) {
+                        this.playbackTime = duration;
+                        this.playbackDirection = -1; // Reverse
+                    } else if (this.playbackTime <= 0) {
+                        this.playbackTime = 0;
+                        this.playbackDirection = 1; // Forward
+                    }
+                } else if (mode === 'loop') {
+                    // Normal loop: always forward, wrap around
+                    this.playbackTime += dt;
+                    if (this.playbackTime >= duration) {
+                        this.playbackTime = 0;
+                    }
                 }
                 
                 // Calculate current frame
-                const targetFrame = Math.floor(this.playbackTime * this.manifest.fps) % this.manifest.frame_count;
+                const targetFrame = Math.min(
+                    Math.floor(this.playbackTime * this.manifest.fps),
+                    this.manifest.frame_count - 1
+                );
                 
                 if (targetFrame !== this.currentFrame) {
                     this.showFrame(targetFrame);
