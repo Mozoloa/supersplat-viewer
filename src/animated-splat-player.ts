@@ -43,7 +43,15 @@ class AnimatedSplatPlayer {
     // Preloading
     private preloadedFrames: Set<number> = new Set();
 
-    private preloadAhead: number = 5; // frames to preload ahead
+    private preloadAhead: number = 2; // frames to preload ahead (reduced for Quest)
+
+    // Track frames currently being loaded to prevent duplicate loads
+    private loadingFrames: Set<number> = new Set();
+
+    // Skip sorting during playback (optimization #3)
+    private sortSkipCounter: number = 0;
+
+    private sortEveryNFrames: number = 5; // Only sort every N frame changes
 
     constructor(global: Global) {
         this.global = global;
@@ -277,7 +285,7 @@ class AnimatedSplatPlayer {
             throw new Error(`Frame ${frameIndex} not found in archive: ${framePath}`);
         }
 
-        // Create a mock Response object - the PlayCanvas PLY loader expects asset.file.contents 
+        // Create a mock Response object - the PlayCanvas PLY loader expects asset.file.contents
         // to be a Response (it calls response.body.getReader())
         const stream = new ReadableStream({
             start(controller) {
@@ -313,6 +321,7 @@ class AnimatedSplatPlayer {
                 
                 app.root.addChild(entity);
                 this.frameAssets[frameIndex] = asset;
+                
                 resolve(entity);
             });
 
@@ -331,14 +340,22 @@ class AnimatedSplatPlayer {
      */
     private async preloadFrames(start: number, end: number): Promise<void> {
         for (let i = start; i <= end; i++) {
-            if (!this.preloadedFrames.has(i) && !this.frameEntities[i]) {
-                try {
-                    const entity = await this.loadFrame(i);
-                    this.frameEntities[i] = entity;
-                    this.preloadedFrames.add(i);
-                } catch (e) {
-                    console.error(`[AnimatedSplat] Failed to preload frame ${i}:`, e);
-                }
+            // Skip if already loaded, already preloaded, or currently loading
+            if (this.frameEntities[i] || this.preloadedFrames.has(i) || this.loadingFrames.has(i)) {
+                continue;
+            }
+            
+            // Mark as loading to prevent duplicate attempts
+            this.loadingFrames.add(i);
+            
+            try {
+                const entity = await this.loadFrame(i);
+                this.frameEntities[i] = entity;
+                this.preloadedFrames.add(i);
+            } catch (e) {
+                console.error(`[AnimatedSplat] Failed to preload frame ${i}:`, e);
+            } finally {
+                this.loadingFrames.delete(i);
             }
         }
     }
@@ -414,8 +431,11 @@ class AnimatedSplatPlayer {
 
     /**
      * Show a specific frame (hide others)
+     * Includes sort-skipping optimization (#3) for smoother playback
      */
     private async showFrame(frameIndex: number): Promise<void> {
+        const { state } = this.global;
+        
         // Hide current frame
         if (this.frameEntities[this.currentFrame]) {
             this.frameEntities[this.currentFrame].enabled = false;
@@ -434,8 +454,23 @@ class AnimatedSplatPlayer {
         }
 
         // Show new frame
-        this.frameEntities[frameIndex].enabled = true;
+        const newFrameEntity = this.frameEntities[frameIndex];
+        newFrameEntity.enabled = true;
         this.currentFrame = frameIndex;
+
+        // Optimization #3: Skip sorting during playback (expensive on Quest)
+        // Only sort every N frames, or always when paused
+        this.sortSkipCounter++;
+        const shouldSort = state.splatAnimationMode === 'paused' ||
+                          this.sortSkipCounter >= this.sortEveryNFrames;
+        
+        if (shouldSort) {
+            this.sortSkipCounter = 0;
+            const gsplat = (newFrameEntity as any).gsplat;
+            if (gsplat?.instance) {
+                gsplat.instance.sort(this.global.camera);
+            }
+        }
     }
 
     /**

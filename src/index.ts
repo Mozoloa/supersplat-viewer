@@ -137,13 +137,20 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
         channel.addEventListener('message', (event) => {
             const data = (event as MessageEvent).data as any;
             if (data && data.type === 'loadSplat' && typeof data.contentUrl === 'string') {
+                const mode = data.mode || 'replace'; // 'replace' or 'add'
                 console.log('[ngty-swap] recv', {
                     contentUrl: data.contentUrl,
+                    mode,
                     xrActive: app.xr.active,
                     xrType: app.xr.type,
                     visibility: document.visibilityState
                 });
-                viewer.loadSplat(data.contentUrl);
+                
+                if (mode === 'add') {
+                    viewer.addSplat(data.contentUrl);
+                } else {
+                    viewer.loadSplat(data.contentUrl);
+                }
             }
         });
     } catch {
@@ -157,14 +164,21 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
 
         const data = event.data as any;
         if (data && data.type === 'loadSplat' && typeof data.contentUrl === 'string') {
+            const mode = data.mode || 'replace';
             console.log('[ngty-swap] msg', {
                 origin: event.origin,
                 contentUrl: data.contentUrl,
+                mode,
                 xrActive: app.xr.active,
                 xrType: app.xr.type,
                 visibility: document.visibilityState
             });
-            viewer.loadSplat(data.contentUrl);
+            
+            if (mode === 'add') {
+                viewer.addSplat(data.contentUrl);
+            } else {
+                viewer.loadSplat(data.contentUrl);
+            }
         }
     });
 

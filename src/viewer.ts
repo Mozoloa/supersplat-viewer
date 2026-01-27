@@ -32,6 +32,7 @@ import { Camera } from './cameras/camera';
 import { nearlyEquals } from './core/math';
 import { loadGsplat } from './gsplat-loader';
 import { InputController } from './input-controller';
+import { SplatManager } from './splat-manager';
 import type { ExperienceSettings, PostEffectSettings } from './settings';
 import type { Global } from './types';
 
@@ -147,6 +148,9 @@ class Viewer {
     // Animated splat player (for .splatseq files)
     animatedSplatPlayer: AnimatedSplatPlayer | null = null;
 
+    // Multi-splat manager
+    splatManager: SplatManager;
+
     private xrEverStarted = false;
 
     private applyCamera(camera: Camera) {
@@ -221,6 +225,12 @@ class Viewer {
         if (this.animatedSplatPlayer) {
             this.animatedSplatPlayer.destroy();
             this.animatedSplatPlayer = null;
+        }
+
+        // Clear all splats from the manager (multi-splat mode cleanup)
+        if (this.splatManager.count > 0) {
+            console.log('[ngty-swap] Clearing splatManager');
+            this.splatManager.clear();
         }
 
         if (!app.xr.active) {
@@ -308,11 +318,65 @@ class Viewer {
         });
     }
 
+    /**
+     * Add a splat to the existing scene (multi-splat mode)
+     * Does NOT replace existing splats
+     */
+    async addSplat(contentUrl: string) {
+        const { app, state } = this.global;
+
+        if (!contentUrl) return null;
+
+        // Don't allow animated splats in multi-splat mode (performance)
+        if (AnimatedSplatPlayer.isAnimatedSplat(contentUrl)) {
+            console.warn('[Viewer] Animated splats not supported in multi-splat mode');
+            return null;
+        }
+
+        // If there's an existing primary splat that's not in the manager, register it first
+        if (this.gsplatEntity && this.splatManager.count === 0) {
+            console.log('[ngty-add] Registering primary splat with SplatManager');
+            this.splatManager.registerExistingEntity(this.gsplatEntity, this.global.config.contentUrl || '');
+            this.gsplatEntity = null;
+        }
+
+        console.log('[ngty-add] Adding splat to scene:', contentUrl);
+
+        const instance = await this.splatManager.addSplat(contentUrl, (progress: number) => {
+            // Could show per-splat progress if needed
+        });
+
+        if (!instance) {
+            console.error('[ngty-add] Failed to add splat');
+            return null;
+        }
+
+        // Apply XR transforms if in XR mode
+        if (app.xr.active) {
+            instance.entity.setLocalEulerAngles(180, 0, 0);
+            instance.entity.setLocalPosition(0, 0, 0);
+        }
+
+        // Update combined bounds
+        this.sceneBound = this.splatManager.getCombinedBounds();
+
+        // Trigger render
+        app.renderNextFrame = true;
+
+        console.log(`[ngty-add] Splat added: ${instance.id} (total: ${this.splatManager.count})`);
+
+        return instance;
+    }
+
     constructor(global: Global, gsplatLoad: Promise<Entity>, skyboxLoad: Promise<void>) {
         this.global = global;
 
         const { app, settings, config, events, state, camera } = global;
         const { graphicsDevice } = app;
+
+        // Initialize splat manager and expose on global for XR access
+        this.splatManager = new SplatManager(global);
+        (global as any).splatManager = this.splatManager;
 
         // enable anonymous CORS for image loading in safari
         (app.loader.getHandler('texture') as TextureHandler).imgParser.crossOrigin = 'anonymous';

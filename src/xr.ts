@@ -3,6 +3,7 @@ import {
     Entity,
     Quat,
     Vec3,
+    Mat4,
     type CameraComponent,
     StandardMaterial,
     BLEND_NORMAL,
@@ -47,6 +48,7 @@ const initXr = (global: Global) => {
 
     let activeInputSource: any = null;
     let activeScaleSource: any = null;
+    let grabbedSplat: Entity | null = null; // The specific splat being grabbed
     const splatOffsetPos = new Vec3();
     const splatOffsetRot = new Quat();
     const invInputRot = new Quat();
@@ -55,6 +57,34 @@ const initXr = (global: Global) => {
     let targetScale = 1.0;
     let exposure = 0.5;
     let temperature = 0; // Range -10 to +10
+
+    // Ray visualization for grab targeting
+    const rayLength = 1.5; // meters - short and subtle
+    const rayEntities: Map<any, Entity> = new Map();
+    let hoveredSplatId: string | null = null; // ID of currently hovered splat
+    
+    const createRayEntity = (): Entity => {
+        const ray = new Entity('grab-ray');
+        ray.addComponent('render', { type: 'cylinder' });
+        
+        const rayMat = new StandardMaterial();
+        rayMat.emissive = new Color(0.5, 0.5, 0.5); // Gray default
+        rayMat.emissiveIntensity = 1; // Subtle
+        rayMat.useLighting = false;
+        rayMat.depthTest = false;
+        rayMat.depthWrite = false;
+        rayMat.blendType = BLEND_NORMAL;
+        rayMat.opacity = 0.5; // Semi-transparent
+        rayMat.update();
+        ray.render.material = rayMat;
+        
+        // Cylinder: 2mm thick, rayLength long
+        ray.setLocalScale(0.002, rayLength / 2, 0.002);
+        ray.enabled = false;
+        
+        app.root.addChild(ray);
+        return ray;
+    };
 
     // Store current XRFrame for SteamVR fallback (PlayCanvas doesn't expose it)
     let currentXRFrame: XRFrame | null = null;
@@ -311,9 +341,18 @@ const initXr = (global: Global) => {
         app.autoRender = true;
         activeInputSource = null;
         activeScaleSource = null;
+        grabbedSplat = null;
         hudVisible = false;
         hud.enabled = false;
         tintPlane.enabled = true;
+
+        // Clean up any leftover ray entities from previous sessions
+        for (const ray of rayEntities.values()) {
+            if (ray) {
+                ray.destroy();
+            }
+        }
+        rayEntities.clear();
 
         // Enable linear tonemapping for exposure to work without shifting colors
         camera.camera.toneMapping = TONEMAP_LINEAR;
@@ -341,13 +380,21 @@ const initXr = (global: Global) => {
         parent.setPosition(0, 0, 0);
         parent.setEulerAngles(0, 0, 0);
 
-        // Initialize ALL gsplat entities (for animated splats)
+        // Initialize gsplat entities
+        // Only reset position for single-splat mode (animated splats)
+        // For multi-splat, keep their relative positions
+        const splatManager = (global as any).splatManager;
+        const isMultiSplat = splatManager && splatManager.count > 1;
+        
         const gsplatComponents = app.root.findComponents('gsplat');
         for (const comp of gsplatComponents) {
             const splatEntity = comp.entity;
             targetScale = splatEntity.getLocalScale().x;
             splatEntity.setLocalEulerAngles(180, 0, 0);
-            splatEntity.setLocalPosition(0, 0, 0);
+            // Only reset position if NOT in multi-splat mode
+            if (!isMultiSplat) {
+                splatEntity.setLocalPosition(0, 0, 0);
+            }
         }
 
         if (app.xr.type === 'immersive-ar') {
@@ -369,6 +416,14 @@ const initXr = (global: Global) => {
         hud.enabled = false;
         tintPlane.enabled = false;
 
+        // Clean up ray entities
+        for (const ray of rayEntities.values()) {
+            if (ray) {
+                ray.destroy();
+            }
+        }
+        rayEntities.clear();
+
         // restore camera to pre-XR state
         parent.setPosition(parentPosition);
         parent.setRotation(parentRotation);
@@ -382,6 +437,21 @@ const initXr = (global: Global) => {
 
     app.on('update', (dt) => {
         if (!app.xr.active) return;
+
+        // Clean up stale ray entities (from disconnected controllers / Quest menu)
+        const currentInputSources = new Set(app.xr.input.inputSources);
+        for (const [inputSource, ray] of rayEntities.entries()) {
+            if (!currentInputSources.has(inputSource)) {
+                if (ray) ray.destroy();
+                rayEntities.delete(inputSource);
+            }
+        }
+
+        // Update splat markers to follow their entities
+        const splatManager = (global as any).splatManager;
+        if (splatManager && typeof splatManager.updateMarkers === 'function') {
+            splatManager.updateMarkers();
+        }
 
         // Find ALL gsplat entities (for animated splats there are multiple frames)
         const gsplatComponents = app.root.findComponents('gsplat');
@@ -492,20 +562,117 @@ const initXr = (global: Global) => {
                 }
             }
 
-            // Grab - use getControllerPose helper for SteamVR compatibility
+            // Grab - use raycast to find first splat the ray touches
             if (!hudVisible && gripPressed && !activeInputSource) {
                 const pose = getControllerPose(inputSource);
                 
                 if (pose) {
-                    activeInputSource = inputSource;
+                    // Get ray direction - SAME as visual ray: -Y angled 45 degrees towards -Z
+                    const rayDir = new Vec3(0, -0.707, -0.707);
+                    pose.rot.transformVector(rayDir, rayDir);
+                    rayDir.normalize();
                     
-                    // Calculate offset from controller to splat
-                    invInputRot.copy(pose.rot).invert();
-                    splatOffsetPos.sub2(splat.getPosition(), pose.pos);
-                    invInputRot.transformVector(splatOffsetPos, splatOffsetPos);
+                    console.log(`[XR GRAB] Controller pos: (${pose.pos.x.toFixed(2)}, ${pose.pos.y.toFixed(2)}, ${pose.pos.z.toFixed(2)})`);
+                    console.log(`[XR GRAB] Ray direction: (${rayDir.x.toFixed(2)}, ${rayDir.y.toFixed(2)}, ${rayDir.z.toFixed(2)})`);
                     
-                    splatOffsetRot.mul2(invInputRot, splat.getRotation());
+                    // Find splat by ray
+                    const splatManager = (global as any).splatManager;
+                    let targetSplat: Entity | null = null;
+                    
+                    if (splatManager && typeof splatManager.findSplatByRay === 'function') {
+                        const hitInstance = splatManager.findSplatByRay(pose.pos, rayDir);
+                        targetSplat = hitInstance?.entity || null;
+                        console.log(`[XR GRAB] Raycast result: ${hitInstance?.id || 'none'}`);
+                    }
+                    
+                    // Fallback to current visible splat if no splatManager or no hit
+                    if (!targetSplat) {
+                        console.log(`[XR GRAB] No raycast hit, falling back to first splat`);
+                        targetSplat = splat;
+                    }
+                    
+                    if (targetSplat) {
+                        activeInputSource = inputSource;
+                        grabbedSplat = targetSplat;
+                        
+                        // Hide ray when grabbing
+                        const ray = rayEntities.get(inputSource);
+                        if (ray) ray.enabled = false;
+                        
+                        // Calculate offset from controller to the grabbed splat
+                        invInputRot.copy(pose.rot).invert();
+                        splatOffsetPos.sub2(targetSplat.getPosition(), pose.pos);
+                        invInputRot.transformVector(splatOffsetPos, splatOffsetPos);
+                        
+                        splatOffsetRot.mul2(invInputRot, targetSplat.getRotation());
+                    }
                 }
+            }
+            
+            // Show ray when not grabbing (for aiming)
+            if (!activeInputSource && !hudVisible) {
+                const pose = getControllerPose(inputSource);
+                if (pose) {
+                    // Get or create ray entity for this controller
+                    let ray = rayEntities.get(inputSource);
+                    if (!ray) {
+                        ray = createRayEntity();
+                        rayEntities.set(inputSource, ray);
+                    }
+                    
+                    ray.enabled = true;
+                    
+                    // Controller forward: -Y angled 45 degrees towards -Z
+                    const forward = new Vec3(0, -0.707, -0.707);
+                    pose.rot.transformVector(forward, forward);
+                    forward.normalize();
+                    
+                    // Position ray: cylinder center is at halfLength forward from controller
+                    const halfLength = rayLength / 2;
+                    ray.setPosition(
+                        pose.pos.x + forward.x * halfLength,
+                        pose.pos.y + forward.y * halfLength,
+                        pose.pos.z + forward.z * halfLength
+                    );
+                    
+                    // Build rotation: cylinder Y axis should point along 'forward'
+                    const yAxis = new Vec3(0, 1, 0);
+                    const dot = yAxis.dot(forward);
+                    
+                    if (dot > 0.9999) {
+                        ray.setRotation(Quat.IDENTITY);
+                    } else if (dot < -0.9999) {
+                        ray.setRotation(new Quat().setFromAxisAngle(Vec3.RIGHT, 180));
+                    } else {
+                        const axis = new Vec3().cross(yAxis, forward).normalize();
+                        const angle = Math.acos(dot) * (180 / Math.PI);
+                        ray.setRotation(new Quat().setFromAxisAngle(axis, angle));
+                    }
+                    
+                    // Raycast to find hovered splat - use marker spheres
+                    const splatManager = (global as any).splatManager;
+                    const rayMat = ray.render?.material as StandardMaterial;
+                    
+                    if (splatManager && typeof splatManager.findSplatByRay === 'function') {
+                        const hitInstance = splatManager.findSplatByRay(pose.pos, forward);
+                        hoveredSplatId = hitInstance?.id || null;
+                        
+                        // Color ray to match the hovered splat's marker color
+                        if (rayMat) {
+                            if (hitInstance) {
+                                rayMat.emissive = hitInstance.color;
+                            } else {
+                                rayMat.emissive = new Color(0.3, 0.3, 0.3); // Gray when not targeting
+                            }
+                            rayMat.update();
+                        }
+                    }
+                }
+            } else {
+                // Hide ray for this controller if grabbing or HUD visible
+                const ray = rayEntities.get(inputSource);
+                if (ray) ray.enabled = false;
+                hoveredSplatId = null;
             }
 
             // Scale
@@ -517,13 +684,14 @@ const initXr = (global: Global) => {
         // Handle Release
         if (activeInputSource && (!activeInputSource.gamepad?.buttons[1]?.pressed || hudVisible)) {
             activeInputSource = null;
+            grabbedSplat = null;
         }
         if (activeScaleSource && (!activeScaleSource.gamepad?.buttons[0]?.pressed || hudVisible)) {
             activeScaleSource = null;
         }
 
-        // Update Splat Position/Rotation - apply to ALL splat entities
-        if (activeInputSource) {
+        // Update Splat Position/Rotation - apply only to grabbed splat
+        if (activeInputSource && grabbedSplat) {
             const pose = getControllerPose(activeInputSource);
 
             // No pose? Skip this frame
@@ -537,34 +705,58 @@ const initXr = (global: Global) => {
                 // Smoothing (lerp/slerp) - Higher value = less lag
                 const lerpFactor = Math.min(dt * 4.5, 1);
                 
-                const currentPos = splat.getPosition();
+                const currentPos = grabbedSplat.getPosition();
                 currentPos.lerp(currentPos, targetPos, lerpFactor);
                 
-                const currentRot = splat.getRotation();
+                const currentRot = grabbedSplat.getRotation();
                 currentRot.slerp(currentRot, targetRot, lerpFactor);
                 
-                // Apply to ALL splat entities so frame switches maintain position
-                for (const comp of gsplatComponents) {
-                    comp.entity.setPosition(currentPos);
-                    comp.entity.setRotation(currentRot);
+                // Apply only to grabbed splat (and its animation frames if animated)
+                // For animated splats, we need to move ALL frames together
+                // But for multi-splat mode, only move the specific grabbed splat
+                const splatManager = (global as any).splatManager;
+                const isMultiSplat = splatManager && splatManager.count > 1;
+                
+                if (!isMultiSplat && gsplatComponents.length > 1) {
+                    // Animated splat (single logical splat with multiple frame entities)
+                    // Move all frame entities together
+                    for (const comp of gsplatComponents) {
+                        comp.entity.setPosition(currentPos);
+                        comp.entity.setRotation(currentRot);
+                    }
+                } else {
+                    // Multi-splat mode OR single splat - only move the grabbed one
+                    grabbedSplat.setPosition(currentPos);
+                    grabbedSplat.setRotation(currentRot);
                 }
             }
         }
 
-        // Update Splat Scale
-        if (activeScaleSource) {
+        // Update Splat Scale - only while grabbing (grip + trigger)
+        if (activeScaleSource && grabbedSplat) {
             const axes = activeScaleSource.gamepad.axes;
             const y = axes[3] || axes[1] || 0; // Joystick Y
 
             if (Math.abs(y) > 0.1) {
-                targetScale *= (1.0 - y * dt * 0.3); // 0.3 sensitivity
-                targetScale = Math.max(0.01, Math.min(targetScale, 100));
+                // Get current scale of grabbed splat
+                const currentScale = grabbedSplat.getLocalScale().x;
+                const newScale = currentScale * (1.0 - y * dt * 0.3); // 0.3 sensitivity
+                const clampedScale = Math.max(0.01, Math.min(newScale, 100));
+                
+                // Apply scale only to grabbed splat (or all frames for animated)
+                const splatManager = (global as any).splatManager;
+                const isMultiSplat = splatManager && splatManager.count > 1;
+                
+                if (!isMultiSplat && gsplatComponents.length > 1) {
+                    // Animated splat - apply to all frames
+                    for (const comp of gsplatComponents) {
+                        comp.entity.setLocalScale(clampedScale, clampedScale, clampedScale);
+                    }
+                } else {
+                    // Multi-splat or single splat
+                    grabbedSplat.setLocalScale(clampedScale, clampedScale, clampedScale);
+                }
             }
-        }
-
-        // Apply Scale to ALL splat entities
-        for (const comp of gsplatComponents) {
-            comp.entity.setLocalScale(targetScale, targetScale, targetScale);
         }
 
         // Update Exposure (when HUD is visible)
@@ -613,9 +805,6 @@ const initXr = (global: Global) => {
                 }
             }
         }
-
-        // Apply Scale Directly
-        splat.setLocalScale(targetScale, targetScale, targetScale);
 
         hudButtonWasPressed = anyHudButtonPressed;
         playbackButtonWasPressed = anyPlaybackButtonPressed;
