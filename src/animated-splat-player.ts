@@ -135,6 +135,7 @@ class AnimatedSplatPlayer {
         state.hasSplatAnimation = true;
         state.splatAnimationPlaying = true;
         state.splatAnimationMode = 'pingpong'; // Default to pingpong for seamless looping
+        state.splatAnimationSpeed = 1; // Default to normal speed
         this.playbackDirection = 1;
 
         // Load first frame immediately
@@ -376,13 +377,15 @@ class AnimatedSplatPlayer {
 
             // Handle playback based on mode
             const mode = state.splatAnimationMode;
+            const speed = state.splatAnimationSpeed ?? 1;
             
             if (mode !== 'paused') {
                 const duration = this.manifest.frame_count / this.manifest.fps;
+                const scaledDt = dt * speed;
                 
                 if (mode === 'pingpong') {
                     // Ping-pong: forward then backward
-                    this.playbackTime += dt * this.playbackDirection;
+                    this.playbackTime += scaledDt * this.playbackDirection;
                     
                     if (this.playbackTime >= duration) {
                         this.playbackTime = duration;
@@ -393,7 +396,7 @@ class AnimatedSplatPlayer {
                     }
                 } else if (mode === 'loop') {
                     // Normal loop: always forward, wrap around
-                    this.playbackTime += dt;
+                    this.playbackTime += scaledDt;
                     if (this.playbackTime >= duration) {
                         this.playbackTime = 0;
                     }

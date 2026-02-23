@@ -36,6 +36,7 @@ type State = {
     hasSplatAnimation: boolean;
     splatAnimationPlaying: boolean;
     splatAnimationMode: 'pingpong' | 'loop' | 'paused';  // Playback mode for splat animation
+    splatAnimationSpeed: number;  // Playback speed multiplier (1 = normal, 2 = double)
     hasAR: boolean;
     hasVR: boolean;
     isFullscreen: boolean;

@@ -180,7 +180,21 @@ const initXr = (global: Global) => {
     let hudButtonWasPressed = false;
     let playbackButtonWasPressed = false;
     let resetWasPressed = false;
-    let lastPlayingMode: 'pingpong' | 'loop' = 'pingpong'; // Track mode before pause
+
+    // Playback cycle index:
+    // 0: pingpong 1x  1: paused  2: loop 1x  3: paused
+    // 4: pingpong 2x  5: paused  6: loop 2x  7: paused
+    let playbackCycleIndex = 0;
+    const PLAYBACK_CYCLE: Array<{ mode: 'pingpong' | 'loop' | 'paused', speed: number, label: string }> = [
+        { mode: 'pingpong', speed: 1, label: 'MIRROR 1×' },
+        { mode: 'paused',   speed: 1, label: 'PAUSED' },
+        { mode: 'loop',     speed: 1, label: 'LOOP 1×' },
+        { mode: 'paused',   speed: 1, label: 'PAUSED' },
+        { mode: 'pingpong', speed: 2, label: 'MIRROR 2×' },
+        { mode: 'paused',   speed: 2, label: 'PAUSED' },
+        { mode: 'loop',     speed: 2, label: 'LOOP 2×' },
+        { mode: 'paused',   speed: 2, label: 'PAUSED' },
+    ];
 
     const getTempColor = (t: number) => {
         const color = new Color(1, 1, 1); // White at 0
@@ -342,6 +356,7 @@ const initXr = (global: Global) => {
         activeInputSource = null;
         activeScaleSource = null;
         grabbedSplat = null;
+        playbackCycleIndex = 0; // Reset cycle so it matches initial pingpong 1x state
         hudVisible = false;
         hud.enabled = false;
         tintPlane.enabled = true;
@@ -513,30 +528,16 @@ const initXr = (global: Global) => {
             }
             
             // Playback Mode Cycle (B or Y buttons - button 5)
-            // Cycle: pingpong -> paused -> loop -> paused -> pingpong...
+            // Cycle: mirror 1x -> paused -> loop 1x -> paused -> mirror 2x -> paused -> loop 2x -> paused -> ...
             const playbackButtonPressed = inputSource.gamepad?.buttons[5]?.pressed;
             if (playbackButtonPressed) {
                 anyPlaybackButtonPressed = true;
                 if (!playbackButtonWasPressed && state.hasSplatAnimation) {
-                    const currentMode = state.splatAnimationMode;
-                    if (currentMode === 'pingpong') {
-                        lastPlayingMode = 'pingpong';
-                        state.splatAnimationMode = 'paused';
-                        console.log('[xr] Playback: PAUSED (was pingpong)');
-                    } else if (currentMode === 'loop') {
-                        lastPlayingMode = 'loop';
-                        state.splatAnimationMode = 'paused';
-                        console.log('[xr] Playback: PAUSED (was loop)');
-                    } else if (currentMode === 'paused') {
-                        // Resume with the OTHER mode
-                        if (lastPlayingMode === 'pingpong') {
-                            state.splatAnimationMode = 'loop';
-                            console.log('[xr] Playback: LOOP');
-                        } else {
-                            state.splatAnimationMode = 'pingpong';
-                            console.log('[xr] Playback: PING-PONG');
-                        }
-                    }
+                    playbackCycleIndex = (playbackCycleIndex + 1) % PLAYBACK_CYCLE.length;
+                    const next = PLAYBACK_CYCLE[playbackCycleIndex];
+                    state.splatAnimationMode = next.mode;
+                    state.splatAnimationSpeed = next.speed;
+                    console.log(`[xr] Playback: ${next.label}`);
                 }
             }
 

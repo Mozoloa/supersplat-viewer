@@ -60,6 +60,7 @@ const main = (app: AppBase, camera: Entity, settingsJson: any, config: Config) =
         hasSplatAnimation: false,
         splatAnimationPlaying: false,
         splatAnimationMode: 'pingpong' as 'pingpong' | 'loop' | 'paused',
+        splatAnimationSpeed: 1,
         hasAR: false,
         hasVR: false,
         isFullscreen: false,
