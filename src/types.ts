@@ -19,6 +19,7 @@ type Config = {
     colorize: boolean;                          // render with LOD colorization
     unified: boolean;                           // force unified rendering mode
     aa: boolean;                                // render with antialiasing
+    gpusort: boolean;                           // enable GPU sorting (WebGPU only)
 };
 
 // observable state that can change at runtime

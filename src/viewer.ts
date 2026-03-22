@@ -393,6 +393,12 @@ class Viewer {
         // disable auto render, we'll render only when camera changes
         app.autoRender = false;
 
+        // SPEC-07: Enable GPU sorting if requested (WebGPU only — engine checks device.isWebGPU internally)
+        if (config.gpusort && (app.scene as any).gsplat) {
+            (app.scene as any).gsplat.gpuSorting = true;
+            console.log('[ngty] GPU sorting enabled');
+        }
+
         // apply camera animation settings
         camera.camera.aspectRatio = graphicsDevice.width / graphicsDevice.height;
 

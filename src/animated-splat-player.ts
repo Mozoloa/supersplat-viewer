@@ -1,4 +1,4 @@
-import { Asset, Entity } from 'playcanvas';
+import { Asset, Entity, platform, Vec3, Quat } from 'playcanvas';
 
 import type { Global } from './types';
 
@@ -51,7 +51,13 @@ class AnimatedSplatPlayer {
     // Skip sorting during playback (optimization #3)
     private sortSkipCounter: number = 0;
 
-    private sortEveryNFrames: number = 5; // Only sort every N frame changes
+    // SPEC-11: adaptive sort interval — mobile gets longer skip
+    private sortEveryNFrames: number = platform.mobile ? 10 : 5;
+
+    // SPEC-11: track camera pose at last sort to skip when stationary
+    private lastSortCameraPos = new Vec3();
+
+    private lastSortCameraRot = new Quat();
 
     constructor(global: Global) {
         this.global = global;
@@ -461,14 +467,22 @@ class AnimatedSplatPlayer {
         newFrameEntity.enabled = true;
         this.currentFrame = frameIndex;
 
-        // Optimization #3: Skip sorting during playback (expensive on Quest)
-        // Only sort every N frames, or always when paused
+        // SPEC-11: Skip sorting during playback (expensive on Quest)
+        // Sort every N frames, but only if camera actually moved
         this.sortSkipCounter++;
+        const cam = this.global.camera;
+        const camPos = cam.getPosition();
+        const camRot = cam.getRotation();
+        const cameraMoved = camPos.distance(this.lastSortCameraPos) > 0.01 ||
+                            Math.abs(camRot.dot(this.lastSortCameraRot)) < 0.999;
+
         const shouldSort = state.splatAnimationMode === 'paused' ||
-                          this.sortSkipCounter >= this.sortEveryNFrames;
-        
+                          (this.sortSkipCounter >= this.sortEveryNFrames && cameraMoved);
+
         if (shouldSort) {
             this.sortSkipCounter = 0;
+            this.lastSortCameraPos.copy(camPos);
+            this.lastSortCameraRot.copy(camRot);
             const gsplat = (newFrameEntity as any).gsplat;
             if (gsplat?.instance) {
                 gsplat.instance.sort(this.global.camera);

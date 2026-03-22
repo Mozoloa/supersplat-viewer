@@ -6,6 +6,7 @@ import {
     Mat4,
     type CameraComponent,
     StandardMaterial,
+    ShaderMaterial,
     BLEND_NORMAL,
     BLEND_MULTIPLICATIVE,
     TONEMAP_LINEAR,
@@ -16,7 +17,8 @@ import {
     FUNC_ALWAYS,
     FUNC_EQUAL,
     STENCILOP_KEEP,
-    StencilParameters
+    StencilParameters,
+    SEMANTIC_POSITION
 } from 'playcanvas';
 // playcanvas XR script modules are not used here
 
@@ -58,10 +60,33 @@ const initXr = (global: Global) => {
     let exposure = 0.5;
     let temperature = 0; // Range -10 to +10
 
+    // SPEC-01: Pre-allocated math objects for hot loop (avoid GC pressure in VR)
+    const _rayDir = new Vec3();
+    const _forward = new Vec3();
+    const _yAxis = new Vec3(0, 1, 0);
+    const _crossAxis = new Vec3();
+    const _rayQuat = new Quat();
+    const _defaultRayColor = new Color(0.3, 0.3, 0.3);
+    const _flipQuat = new Quat().setFromAxisAngle(Vec3.RIGHT, 180);
+
+    // SPEC-02: Cached gsplat component list (avoid scene graph traversal every frame)
+    let _cachedGsplatComponents: any[] = [];
+    let _gsplatCacheDirty = true;
+    const invalidateGsplatCache = () => { _gsplatCacheDirty = true; };
+
+    // SPEC-03: Track entities that already have stencil configured
+    const _stencilConfigured = new WeakSet<Entity>();
+
+    // Frame skip: render every other frame to halve GPU load (matches Quest menu behavior)
+    let _xrFrameCount = 0;
+    const RENDER_EVERY_N = 2; // Render 1 of every 2 frames — compositor reprojects the rest
+
     // Ray visualization for grab targeting
     const rayLength = 1.5; // meters - short and subtle
     const rayEntities: Map<any, Entity> = new Map();
     let hoveredSplatId: string | null = null; // ID of currently hovered splat
+    // SPEC-04: Track previous hovered splat per controller to skip redundant material updates
+    const _prevHoveredPerController = new Map<any, string | null>();
     
     const createRayEntity = (): Entity => {
         const ray = new Entity('grab-ray');
@@ -108,13 +133,20 @@ const initXr = (global: Global) => {
 
     // Helper to get controller world position/rotation from XRInputSource
     // Uses targetRaySpace which is more reliably available than gripSpace
+    // SPEC-01: Pre-allocated return objects for getControllerPose (avoids allocation per call)
+    const _posePos = new Vec3();
+    const _poseRot = new Quat();
+    const _poseResult = { pos: _posePos, rot: _poseRot };
+
     const getControllerPose = (inputSource: any): { pos: Vec3, rot: Quat } | null => {
         try {
             // First try PlayCanvas methods
             const pos = inputSource.getPosition();
             const rot = inputSource.getRotation();
             if (pos && rot) {
-                return { pos, rot };
+                _posePos.copy(pos);
+                _poseRot.copy(rot);
+                return _poseResult;
             }
         } catch (e) {
             // PlayCanvas internal error
@@ -166,10 +198,9 @@ const initXr = (global: Global) => {
             const p = pose.transform.position;
             const o = pose.transform.orientation;
             
-            return {
-                pos: new Vec3(p.x, p.y, p.z),
-                rot: new Quat(o.x, o.y, o.z, o.w)
-            };
+            _posePos.set(p.x, p.y, p.z);
+            _poseRot.set(o.x, o.y, o.z, o.w);
+            return _poseResult;
         } catch (e) {
             console.warn('[xr] getControllerPose fallback failed:', e);
             return null;
@@ -196,20 +227,22 @@ const initXr = (global: Global) => {
         { mode: 'paused',   speed: 2, label: 'PAUSED' },
     ];
 
+    // SPEC-01: pre-allocate color for getTempColor
+    const _tempColor = new Color();
     const getTempColor = (t: number) => {
-        const color = new Color(1, 1, 1); // White at 0
+        _tempColor.set(1, 1, 1); // White at 0
         if (t > 0) {
             // Warmer (Orange)
-            color.r = 1.0;
-            color.g = 0.6;
-            color.b = 0.0;
+            _tempColor.r = 1.0;
+            _tempColor.g = 0.55;
+            _tempColor.b = 0.15;
         } else if (t < 0) {
             // Colder (Blue)
-            color.r = 0.0;
-            color.g = 0.6;
-            color.b = 1.0;
+            _tempColor.r = 0.15;
+            _tempColor.g = 0.55;
+            _tempColor.b = 1.0;
         }
-        return color;
+        return _tempColor;
     };
 
     // HUD Setup
@@ -288,6 +321,10 @@ const initXr = (global: Global) => {
     
     updateHudText('0.50', '0');
 
+    // SPEC-12: throttle HUD texture uploads to ~10Hz
+    let lastHudUpdateTime = 0;
+    const HUD_UPDATE_INTERVAL = 100; // ms
+
     // Move HUD to UI layer (rendered after World)
     const uiLayer = app.scene.layers.getLayerByName('UI');
     if (uiLayer) {
@@ -300,30 +337,38 @@ const initXr = (global: Global) => {
         }
     }
     
-    // Tint Plane Setup (Lens Filter)
+    // Tint Plane Setup (Lens Filter) — raw shader to bypass tone mapping
     const tintPlane = new Entity('TintPlane');
     tintPlane.addComponent('render', { type: 'plane' });
     tintPlane.setLocalScale(2, 1, 2); // 2m square (should cover most of the view at 0.8m)
     tintPlane.setLocalEulerAngles(90, 0, 0); // Face user
     tintPlane.setLocalPosition(0, 0, -0.8); // Keep the working distance
     
-    const tintMaterial = new StandardMaterial();
-    tintMaterial.emissive = new Color(1, 1, 1); // White base (neutral for Multiply)
-    tintMaterial.opacity = 1.0;
-    tintMaterial.useLighting = false;
+    const tintMaterial = new ShaderMaterial({
+        uniqueName: 'tintMultiply',
+        attributes: { aPosition: SEMANTIC_POSITION },
+        vertexGLSL: [
+            'attribute vec3 aPosition;',
+            'uniform mat4 matrix_model;',
+            'uniform mat4 matrix_viewProjection;',
+            'void main() {',
+            '    gl_Position = matrix_viewProjection * matrix_model * vec4(aPosition, 1.0);',
+            '}'
+        ].join('\n'),
+        fragmentGLSL: [
+            'precision mediump float;',
+            'uniform vec3 uTintColor;',
+            'void main() {',
+            '    gl_FragColor = vec4(uTintColor, 1.0);',
+            '}'
+        ].join('\n')
+    });
     tintMaterial.depthTest = false;
     tintMaterial.blendType = BLEND_MULTIPLICATIVE;
+    tintMaterial.cull = 0;
 
-    // Stencil: Only render where stencil value is 1 (where splat is)
-    tintMaterial.stencilFront = new StencilParameters({
-        func: FUNC_EQUAL,
-        ref: 1,
-        fail: STENCILOP_KEEP,
-        zfail: STENCILOP_KEEP,
-        zpass: STENCILOP_KEEP
-    });
-    tintMaterial.stencilBack = tintMaterial.stencilFront;
-
+    // Start at identity (pure white = no effect via multiply)
+    tintMaterial.setParameter('uTintColor', [1.0, 1.0, 1.0]);
     tintMaterial.update();
     tintPlane.render.material = tintMaterial;
     
@@ -335,6 +380,60 @@ const initXr = (global: Global) => {
 
     // Attach to camera so it follows head rotation/position
     camera.addChild(hud);
+
+    // FPS Counter Setup (visible when HUD is up)
+    const fpsEntity = new Entity('FPS');
+    fpsEntity.addComponent('render', { type: 'plane' });
+    fpsEntity.setLocalScale(0.08, 1, 0.04); // 8cm wide, 4cm high
+    fpsEntity.setLocalPosition(-0.25, 0.15, -1.0); // Left side (mirror of HUD)
+
+    const fpsCanvas = document.createElement('canvas');
+    fpsCanvas.width = 128;
+    fpsCanvas.height = 64;
+    const fpsCtx = fpsCanvas.getContext('2d')!;
+
+    const fpsTexture = new Texture(app.graphicsDevice, {
+        width: 128,
+        height: 64,
+        mipmaps: false,
+        minFilter: FILTER_LINEAR,
+        magFilter: FILTER_LINEAR,
+        addressU: ADDRESS_CLAMP_TO_EDGE,
+        addressV: ADDRESS_CLAMP_TO_EDGE
+    });
+    fpsTexture.setSource(fpsCanvas);
+
+    const fpsMaterial = new StandardMaterial();
+    fpsMaterial.emissive = new Color(1, 1, 1);
+    fpsMaterial.useLighting = false;
+    fpsMaterial.depthTest = false;
+    fpsMaterial.blendType = BLEND_NORMAL;
+    fpsMaterial.cull = 0;
+    fpsMaterial.emissiveMap = fpsTexture;
+    fpsMaterial.opacityMap = fpsTexture;
+    fpsMaterial.update();
+    fpsEntity.render.material = fpsMaterial;
+
+    if (uiLayer) {
+        fpsEntity.render.layers = [uiLayer.id];
+    }
+    camera.addChild(fpsEntity);
+
+    let fpsAccum = 0;
+    let fpsFrames = 0;
+    let fpsDisplay = 0;
+
+    const updateFpsText = (fps: number) => {
+        fpsCtx.clearRect(0, 0, 128, 64);
+        fpsCtx.fillStyle = '#00ff00';
+        fpsCtx.font = 'bold 48px monospace';
+        fpsCtx.textAlign = 'center';
+        fpsCtx.textBaseline = 'middle';
+        fpsCtx.fillText(String(fps), 64, 32);
+        fpsTexture.upload();
+    };
+    updateFpsText(0);
+    fpsEntity.enabled = false;
 
     // XR-only UI: never show in the normal viewer
     hudVisible = false;
@@ -359,7 +458,14 @@ const initXr = (global: Global) => {
         playbackCycleIndex = 0; // Reset cycle so it matches initial pingpong 1x state
         hudVisible = false;
         hud.enabled = false;
-        tintPlane.enabled = true;
+        tintPlane.enabled = false; // SPEC-06: start disabled, enable only when temperature != 0
+        fpsEntity.enabled = false; // FPS counter starts hidden, shown with HUD
+        fpsAccum = 0;
+        fpsFrames = 0;
+        fpsDisplay = 0;
+
+        // SPEC-02/03: Invalidate caches on XR start
+        _gsplatCacheDirty = true;
 
         // Clean up any leftover ray entities from previous sessions
         for (const ray of rayEntities.values()) {
@@ -368,6 +474,7 @@ const initXr = (global: Global) => {
             }
         }
         rayEntities.clear();
+        _prevHoveredPerController.clear();
 
         // Enable linear tonemapping for exposure to work without shifting colors
         camera.camera.toneMapping = TONEMAP_LINEAR;
@@ -378,8 +485,8 @@ const initXr = (global: Global) => {
         }
         
         temperature = 0;
-        tintMaterial.emissive = new Color(1, 1, 1);
-        tintMaterial.update();
+        tintMaterial.setParameter('uTintColor', [1.0, 1.0, 1.0]);
+        tintPlane.enabled = false;
 
         updateHudText(exposure.toFixed(2), '0');
 
@@ -401,8 +508,11 @@ const initXr = (global: Global) => {
         const splatManager = (global as any).splatManager;
         const isMultiSplat = splatManager && splatManager.count > 1;
         
-        const gsplatComponents = app.root.findComponents('gsplat');
-        for (const comp of gsplatComponents) {
+        // Use fresh lookup on XR start (cache is dirty)
+        const startGsplatComponents = app.root.findComponents('gsplat');
+        _cachedGsplatComponents = startGsplatComponents;
+        _gsplatCacheDirty = false;
+        for (const comp of startGsplatComponents) {
             const splatEntity = comp.entity;
             targetScale = splatEntity.getLocalScale().x;
             splatEntity.setLocalEulerAngles(180, 0, 0);
@@ -411,6 +521,16 @@ const initXr = (global: Global) => {
                 splatEntity.setLocalPosition(0, 0, 0);
             }
         }
+
+        // GPU perf: enable max fixed foveated rendering (free, no quality loss in center)
+        if (app.xr.fixedFoveation !== undefined) {
+            app.xr.fixedFoveation = 1;
+        }
+
+        // Frame skip: start counter, use autoRender=false so we control when frames render
+        _xrFrameCount = 0;
+        app.autoRender = false;
+        app.renderNextFrame = true; // Ensure first frame renders
 
         if (app.xr.type === 'immersive-ar') {
             clearColor.copy(camera.camera.clearColor);
@@ -430,6 +550,11 @@ const initXr = (global: Global) => {
         hudVisible = false;
         hud.enabled = false;
         tintPlane.enabled = false;
+        fpsEntity.enabled = false;
+
+        // SPEC-02/03: Invalidate caches on XR end
+        _gsplatCacheDirty = true;
+        _prevHoveredPerController.clear();
 
         // Clean up ray entities
         for (const ray of rayEntities.values()) {
@@ -450,8 +575,26 @@ const initXr = (global: Global) => {
         }
     });
 
+    // SPEC-02: Invalidate gsplat cache when scene hierarchy changes
+    app.root.on('childinsert', invalidateGsplatCache);
+    app.root.on('childremove', (node: Entity) => {
+        invalidateGsplatCache();
+        // Clear grab state if the removed entity is the one being grabbed
+        if (grabbedSplat && (grabbedSplat === node || !grabbedSplat.parent)) {
+            grabbedSplat = null;
+            activeInputSource = null;
+            activeScaleSource = null;
+        }
+    });
+
     app.on('update', (dt) => {
         if (!app.xr.active) return;
+
+        // Frame skip: only render every Nth frame, compositor reprojects the rest
+        _xrFrameCount++;
+        if (_xrFrameCount % RENDER_EVERY_N === 0) {
+            app.renderNextFrame = true;
+        }
 
         // Clean up stale ray entities (from disconnected controllers / Quest menu)
         const currentInputSources = new Set(app.xr.input.inputSources);
@@ -459,17 +602,23 @@ const initXr = (global: Global) => {
             if (!currentInputSources.has(inputSource)) {
                 if (ray) ray.destroy();
                 rayEntities.delete(inputSource);
+                _prevHoveredPerController.delete(inputSource);
             }
         }
 
-        // Update splat markers to follow their entities
+        // SPEC-05: Update splat markers only when in multi-splat mode (>1 splat)
         const splatManager = (global as any).splatManager;
-        if (splatManager && typeof splatManager.updateMarkers === 'function') {
+        if (splatManager && splatManager.count > 1 && typeof splatManager.updateMarkers === 'function') {
             splatManager.updateMarkers();
         }
 
-        // Find ALL gsplat entities (for animated splats there are multiple frames)
-        const gsplatComponents = app.root.findComponents('gsplat');
+        // SPEC-02: Use cached gsplat component list (invalidated on entity add/remove)
+        if (_gsplatCacheDirty) {
+            _cachedGsplatComponents = app.root.findComponents('gsplat');
+            _gsplatCacheDirty = false;
+
+        }
+        const gsplatComponents = _cachedGsplatComponents;
         if (!gsplatComponents || gsplatComponents.length === 0) return;
         
         // Get the currently enabled splat entity (the visible frame)
@@ -485,23 +634,36 @@ const initXr = (global: Global) => {
             splat = gsplatComponents[0].entity;
         }
 
-        // Ensure ALL splats have stencil set up (so they work when their frame is shown)
+        // SPEC-03: One-time stencil setup per entity (skip already configured)
         for (const comp of gsplatComponents) {
+            if (_stencilConfigured.has(comp.entity)) continue;
             const gsplat = (comp.entity as any).gsplat;
-            if (gsplat && gsplat.instance && gsplat.instance.meshInstance) {
+            if (gsplat?.instance?.meshInstance) {
                 const mi = gsplat.instance.meshInstance;
-                if (!mi.stencilFront || mi.stencilFront.func !== FUNC_ALWAYS) {
-                    mi.stencilFront = new StencilParameters({
-                        func: FUNC_ALWAYS,
-                        ref: 1,
-                        fail: STENCILOP_REPLACE,
-                        zfail: STENCILOP_REPLACE,
-                        zpass: STENCILOP_REPLACE
-                    });
-                    mi.stencilBack = mi.stencilFront;
-                }
+                mi.stencilFront = new StencilParameters({
+                    func: FUNC_ALWAYS,
+                    ref: 1,
+                    fail: STENCILOP_REPLACE,
+                    zfail: STENCILOP_REPLACE,
+                    zpass: STENCILOP_REPLACE
+                });
+                mi.stencilBack = mi.stencilFront;
+                _stencilConfigured.add(comp.entity);
             }
         }
+
+        // FPS counter update
+        fpsAccum += dt;
+        fpsFrames++;
+        if (fpsAccum >= 0.5) {
+            fpsDisplay = Math.round(fpsFrames / fpsAccum);
+            updateFpsText(fpsDisplay);
+            fpsAccum = 0;
+            fpsFrames = 0;
+        }
+        // Orient FPS counter to face the camera (same technique as HUD)
+        fpsEntity.lookAt(camera.getPosition());
+        fpsEntity.rotateLocal(90, 180, 0);
 
         // Dynamically orient HUD to face the camera
         if (hudVisible) {
@@ -524,6 +686,7 @@ const initXr = (global: Global) => {
                 if (!hudButtonWasPressed) {
                     hudVisible = !hudVisible;
                     hud.enabled = hudVisible;
+                    fpsEntity.enabled = hudVisible;
                 }
             }
             
@@ -556,8 +719,8 @@ const initXr = (global: Global) => {
                     }
 
                     // Apply Temperature
-                    tintMaterial.emissive = new Color(1, 1, 1);
-                    tintMaterial.update();
+                    tintMaterial.setParameter('uTintColor', [1.0, 1.0, 1.0]);
+                    tintPlane.enabled = false; // SPEC-06: disable when neutral
 
                     updateHudText('0.50', '0');
                 }
@@ -569,19 +732,19 @@ const initXr = (global: Global) => {
                 
                 if (pose) {
                     // Get ray direction - SAME as visual ray: -Y angled 45 degrees towards -Z
-                    const rayDir = new Vec3(0, -0.707, -0.707);
-                    pose.rot.transformVector(rayDir, rayDir);
-                    rayDir.normalize();
+                    _rayDir.set(0, -0.707, -0.707);
+                    pose.rot.transformVector(_rayDir, _rayDir);
+                    _rayDir.normalize();
                     
                     console.log(`[XR GRAB] Controller pos: (${pose.pos.x.toFixed(2)}, ${pose.pos.y.toFixed(2)}, ${pose.pos.z.toFixed(2)})`);
-                    console.log(`[XR GRAB] Ray direction: (${rayDir.x.toFixed(2)}, ${rayDir.y.toFixed(2)}, ${rayDir.z.toFixed(2)})`);
+                    console.log(`[XR GRAB] Ray direction: (${_rayDir.x.toFixed(2)}, ${_rayDir.y.toFixed(2)}, ${_rayDir.z.toFixed(2)})`);
                     
                     // Find splat by ray
                     const splatManager = (global as any).splatManager;
                     let targetSplat: Entity | null = null;
                     
                     if (splatManager && typeof splatManager.findSplatByRay === 'function') {
-                        const hitInstance = splatManager.findSplatByRay(pose.pos, rayDir);
+                        const hitInstance = splatManager.findSplatByRay(pose.pos, _rayDir);
                         targetSplat = hitInstance?.entity || null;
                         console.log(`[XR GRAB] Raycast result: ${hitInstance?.id || 'none'}`);
                     }
@@ -624,30 +787,31 @@ const initXr = (global: Global) => {
                     ray.enabled = true;
                     
                     // Controller forward: -Y angled 45 degrees towards -Z
-                    const forward = new Vec3(0, -0.707, -0.707);
-                    pose.rot.transformVector(forward, forward);
-                    forward.normalize();
+                    _forward.set(0, -0.707, -0.707);
+                    pose.rot.transformVector(_forward, _forward);
+                    _forward.normalize();
                     
                     // Position ray: cylinder center is at halfLength forward from controller
                     const halfLength = rayLength / 2;
                     ray.setPosition(
-                        pose.pos.x + forward.x * halfLength,
-                        pose.pos.y + forward.y * halfLength,
-                        pose.pos.z + forward.z * halfLength
+                        pose.pos.x + _forward.x * halfLength,
+                        pose.pos.y + _forward.y * halfLength,
+                        pose.pos.z + _forward.z * halfLength
                     );
                     
                     // Build rotation: cylinder Y axis should point along 'forward'
-                    const yAxis = new Vec3(0, 1, 0);
-                    const dot = yAxis.dot(forward);
+                    _yAxis.set(0, 1, 0);
+                    const dot = _yAxis.dot(_forward);
                     
                     if (dot > 0.9999) {
                         ray.setRotation(Quat.IDENTITY);
                     } else if (dot < -0.9999) {
-                        ray.setRotation(new Quat().setFromAxisAngle(Vec3.RIGHT, 180));
+                        ray.setRotation(_flipQuat);
                     } else {
-                        const axis = new Vec3().cross(yAxis, forward).normalize();
+                        _crossAxis.cross(_yAxis, _forward).normalize();
                         const angle = Math.acos(dot) * (180 / Math.PI);
-                        ray.setRotation(new Quat().setFromAxisAngle(axis, angle));
+                        _rayQuat.setFromAxisAngle(_crossAxis, angle);
+                        ray.setRotation(_rayQuat);
                     }
                     
                     // Raycast to find hovered splat - use marker spheres
@@ -655,17 +819,16 @@ const initXr = (global: Global) => {
                     const rayMat = ray.render?.material as StandardMaterial;
                     
                     if (splatManager && typeof splatManager.findSplatByRay === 'function') {
-                        const hitInstance = splatManager.findSplatByRay(pose.pos, forward);
-                        hoveredSplatId = hitInstance?.id || null;
+                        const hitInstance = splatManager.findSplatByRay(pose.pos, _forward);
+                        const currentHoveredId = hitInstance?.id || null;
+                        hoveredSplatId = currentHoveredId;
                         
-                        // Color ray to match the hovered splat's marker color
-                        if (rayMat) {
-                            if (hitInstance) {
-                                rayMat.emissive = hitInstance.color;
-                            } else {
-                                rayMat.emissive = new Color(0.3, 0.3, 0.3); // Gray when not targeting
-                            }
+                        // SPEC-04: Only update material when hovered splat changes
+                        const prevHovered = _prevHoveredPerController.get(inputSource) ?? null;
+                        if (currentHoveredId !== prevHovered && rayMat) {
+                            rayMat.emissive = hitInstance ? hitInstance.color : _defaultRayColor;
                             rayMat.update();
+                            _prevHoveredPerController.set(inputSource, currentHoveredId);
                         }
                     }
                 }
@@ -686,6 +849,12 @@ const initXr = (global: Global) => {
         if (activeInputSource && (!activeInputSource.gamepad?.buttons[1]?.pressed || hudVisible)) {
             activeInputSource = null;
             grabbedSplat = null;
+        }
+        // Safety: clear grab if the entity was destroyed
+        if (grabbedSplat && !grabbedSplat.parent) {
+            grabbedSplat = null;
+            activeInputSource = null;
+            activeScaleSource = null;
         }
         if (activeScaleSource && (!activeScaleSource.gamepad?.buttons[0]?.pressed || hudVisible)) {
             activeScaleSource = null;
@@ -762,6 +931,8 @@ const initXr = (global: Global) => {
 
         // Update Exposure (when HUD is visible)
         if (hudVisible) {
+            let anyInputChanged = false;
+
             for (const inputSource of app.xr.input.inputSources) {
                 const axes = inputSource.gamepad?.axes;
                 if (!axes) continue;
@@ -776,7 +947,7 @@ const initXr = (global: Global) => {
                     if (Math.abs(y) > 0.1) {
                         // Adjust exposure: Up = brighter, Down = darker
                         exposure *= (1.0 - y * dt * 1); // 1.0 sensitivity
-                        exposure = Math.max(0.1, Math.min(exposure, 3.0));
+                        exposure = Math.max(0.01, Math.min(exposure, 3.0));
                         
                         // Apply to camera and scene
                         (camera.camera as any).exposure = exposure;
@@ -790,20 +961,44 @@ const initXr = (global: Global) => {
                         // Adjust temperature: -10 to +10, fast rate of change
                         temperature += x * dt * 10.0;
                         temperature = Math.max(-10, Math.min(temperature, 10));
+
+                        // Snap to exact zero when very close to avoid float drift
+                        if (Math.abs(temperature) < 0.05) {
+                            temperature = 0;
+                        }
                         
-                        const targetTint = getTempColor(temperature);
-                        // Multiply mode: Lerp from White (no effect) to target color
-                        const intensity = (Math.abs(temperature) / 10) * 0.4;
-                        tintMaterial.emissive.lerp(Color.WHITE, targetTint, intensity);
-                        tintMaterial.update();
-                        
+                        const isActive = temperature !== 0;
+                        if (isActive) {
+                            const targetTint = getTempColor(temperature);
+                            // Lerp from white toward tint color
+                            const intensity = (Math.abs(temperature) / 10) * 0.6;
+                            const r = 1.0 + (targetTint.r - 1.0) * intensity;
+                            const g = 1.0 + (targetTint.g - 1.0) * intensity;
+                            const b = 1.0 + (targetTint.b - 1.0) * intensity;
+                            tintMaterial.setParameter('uTintColor', [r, g, b]);
+                        } else {
+                            tintMaterial.setParameter('uTintColor', [1.0, 1.0, 1.0]);
+                        }
+                        tintPlane.enabled = isActive; // SPEC-06: only draw when needed
+
                         changed = true;
                     }
                 }
 
                 if (changed) {
-                    updateHudText(exposure.toFixed(2), Math.round(temperature).toString());
+                    anyInputChanged = true;
+                    const now = performance.now();
+                    if (now - lastHudUpdateTime > HUD_UPDATE_INTERVAL) {
+                        updateHudText(exposure.toFixed(2), Math.round(temperature).toString());
+                        lastHudUpdateTime = now;
+                    }
                 }
+            }
+
+            // SPEC-12: final update when joystick returns to center
+            if (!anyInputChanged && lastHudUpdateTime > 0) {
+                updateHudText(exposure.toFixed(2), Math.round(temperature).toString());
+                lastHudUpdateTime = 0;
             }
         }
 
