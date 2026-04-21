@@ -30,7 +30,6 @@ const loadGsplat = async (app: AppBase, config: Config, progressCallback: (progr
     return new Promise<Entity>((resolve, reject) => {
         asset.on('load', () => {
             const entity = new Entity('gsplat');
-            entity.setLocalEulerAngles(0, 0, 180);
             entity.addComponent('gsplat', {
                 unified: unified || filename.toLowerCase().endsWith('lod-meta.json'),
                 asset

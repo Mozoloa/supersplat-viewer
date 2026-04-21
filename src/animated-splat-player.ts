@@ -320,7 +320,6 @@ class AnimatedSplatPlayer {
         return new Promise<Entity>((resolve, reject) => {
             asset.on('load', () => {
                 const entity = new Entity(`gsplat_frame_${frameIndex}`);
-                entity.setLocalEulerAngles(0, 0, 180);
                 entity.addComponent('gsplat', { asset });
                 
                 // Hide by default (only current frame visible)

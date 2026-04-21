@@ -460,7 +460,6 @@ export class SplatManager {
 
     applyXRTransforms(): void {
         for (const instance of this.splats.values()) {
-            instance.entity.setLocalEulerAngles(180, 0, 0);
             instance.entity.setLocalPosition(0, 0, 0);
         }
     }

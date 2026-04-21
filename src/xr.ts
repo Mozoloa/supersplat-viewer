@@ -515,7 +515,6 @@ const initXr = (global: Global) => {
         for (const comp of startGsplatComponents) {
             const splatEntity = comp.entity;
             targetScale = splatEntity.getLocalScale().x;
-            splatEntity.setLocalEulerAngles(180, 0, 0);
             // Only reset position if NOT in multi-splat mode
             if (!isMultiSplat) {
                 splatEntity.setLocalPosition(0, 0, 0);

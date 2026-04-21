@@ -260,7 +260,6 @@ class Viewer {
 
         // match XR transform expectations when swapping mid-session
         if (app.xr.active && entity) {
-            entity.setLocalEulerAngles(180, 0, 0);
             entity.setLocalPosition(0, 0, 0);
         }
 
@@ -353,7 +352,6 @@ class Viewer {
 
         // Apply XR transforms if in XR mode
         if (app.xr.active) {
-            instance.entity.setLocalEulerAngles(180, 0, 0);
             instance.entity.setLocalPosition(0, 0, 0);
         }
 
