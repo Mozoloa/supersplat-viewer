@@ -6,6 +6,7 @@ import { PersistentFrameCache } from './persistent-frame-cache';
 import { mediaFetch } from './media-request';
 
 const MAGIC = 'EMSSPLAT';
+const VERSION = 1;
 const PREFIX_BYTES = 16;
 const MAX_PLY_HEADER_BYTES = 64 * 1024;
 const EMPTY_FLOAT32 = new Float32Array(0);
@@ -343,8 +344,8 @@ const readRange = async (
 
 const validateManifest = (value: unknown): SplatStreamManifest => {
     const manifest = value as Partial<SplatStreamManifest> | null;
-    if (!manifest || manifest.format !== 'ems-splat-stream' || manifest.version !== 1) {
-        throw new Error('Unsupported animated splat stream. Expected ems-splat-stream version 1.');
+    if (!manifest || manifest.format !== 'ems-splat-stream' || manifest.version !== VERSION) {
+        throw new Error(`Unsupported animated splat stream. Expected ems-splat-stream version ${VERSION}.`);
     }
     if (!Number.isFinite(manifest.fps) || manifest.fps! <= 0
         || !Number.isInteger(manifest.frame_count) || manifest.frame_count! < 2
@@ -423,8 +424,14 @@ export class SplatStreamSource {
         const view = new DataView(prefix);
         const version = view.getUint32(8, true);
         const manifestLength = view.getUint32(12, true);
-        if (magic !== MAGIC || version !== 2 || manifestLength < 2 || manifestLength > 16 * 1024 * 1024) {
-            throw new Error('This is not a supported animated splat stream. Legacy .splatseq files remain available in the legacy player.');
+        if (magic !== MAGIC) {
+            throw new Error(`Animated splat stream has an unsupported signature (${magic || 'empty'}).`);
+        }
+        if (version !== VERSION) {
+            throw new Error(`Animated splat stream version ${version} is not supported; expected EMS version ${VERSION}.`);
+        }
+        if (manifestLength < 2 || manifestLength > 16 * 1024 * 1024) {
+            throw new Error('Animated splat stream has an invalid manifest length.');
         }
         const manifestBytes = await readRange(url, PREFIX_BYTES, PREFIX_BYTES + manifestLength - 1);
         const manifestText = new TextDecoder().decode(manifestBytes);
