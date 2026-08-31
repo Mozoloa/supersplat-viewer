@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ems:schema:spatial-scene:v1",
+  "title": "EMS authored spatial scene",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "kind", "coordinateSystem", "asset", "contentToWorld", "captureCamera"],
+  "properties": {
+    "format": { "const": "ems-spatial-scene" },
+    "version": { "const": 1 },
+    "kind": { "enum": ["static-splat", "animated-splat"] },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handedness", "up", "forward", "units", "matrixLayout"],
+      "properties": {
+        "handedness": { "const": "right" }, "up": { "const": "+Y" }, "forward": { "const": "-Z" },
+        "units": { "const": "meters" }, "matrixLayout": { "const": "row-major" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "type", "encoding"],
+      "properties": {
+        "uri": { "type": "string", "minLength": 1 }, "type": { "const": "gaussian-splat" },
+        "encoding": { "enum": ["ply", "supersplat-compressed-ply", "sog", "splatstream"] }
+      }
+    },
+    "contentToWorld": { "$ref": "#/$defs/matrix4" },
+    "captureCamera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cameraToWorld", "intrinsics"],
+      "properties": {
+        "cameraToWorld": { "$ref": "#/$defs/matrix4" },
+        "intrinsics": {
+          "type": "object", "additionalProperties": false,
+          "required": ["projection", "fx", "fy", "cx", "cy", "width", "height"],
+          "properties": {
+            "projection": { "const": "perspective" }, "fx": { "type": "number", "exclusiveMinimum": 0 },
+            "fy": { "type": "number", "exclusiveMinimum": 0 }, "cx": { "type": "number" }, "cy": { "type": "number" },
+            "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "near": { "type": "number", "exclusiveMinimum": 0, "default": 0.01 },
+        "far": { "type": "number", "exclusiveMinimum": 0, "default": 1000 }
+      }
+    },
+    "grabPivot": { "$ref": "#/$defs/vector3" }
+  },
+  "$defs": {
+    "matrix4": { "type": "array", "minItems": 16, "maxItems": 16, "items": { "type": "number" } },
+    "vector3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } }
+  }
+}

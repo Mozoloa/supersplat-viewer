@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>EMS Spatial Player</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <pc-app antialias="false" depth="true" high-resolution="true" stencil="false">
+        <pc-scene>
+            <pc-entity name="camera"></pc-entity>
+            <pc-entity name="content-root"></pc-entity>
+        </pc-scene>
+    </pc-app>
+    <script>
+        (() => {
+            const app = document.querySelector('pc-app');
+            const forced = new URL(location.href).searchParams.get('backend');
+            const webGpuXrReady = !!navigator.gpu && typeof globalThis.XRGPUBinding !== 'undefined';
+            const backend = forced === 'webgpu' || forced === 'webgl2'
+                ? forced
+                : (webGpuXrReady ? 'webgpu' : 'webgl2');
+            app.setAttribute('backend', backend);
+            app.dataset.backendSelection = forced ? 'URL override' : (webGpuXrReady ? 'WebGPU XR available' : 'WebGL2 XR-safe fallback');
+        })();
+    </script>
+
+    <header class="toolbar">
+        <div class="brand">
+            <span class="eyebrow">EMS</span>
+            <strong>Spatial Player</strong>
+        </div>
+        <div class="actions">
+            <button id="reset" type="button" title="Restore the exact authored placement (R)">Reset</button>
+            <button id="playback" type="button" hidden>Play</button>
+            <button id="enter-ar" type="button" data-available="false">AR diagnostics</button>
+            <button id="enter-vr" type="button" data-available="false">VR diagnostics</button>
+        </div>
+    </header>
+
+    <aside class="status-card" aria-live="polite">
+        <div id="headline" class="headline">Starting NextPlayer…</div>
+        <div id="detail" class="detail">0%</div>
+        <div id="progress" class="progress" aria-hidden="true"></div>
+        <pre id="diagnostics" class="diagnostics"></pre>
+        <div id="notice" class="notice"></div>
+    </aside>
+
+    <footer class="hint">XR: grip moves · grip + trigger + same-hand stick up/down scales · A/X toggles stats.</footer>
+    <script type="module" src="./main.js?v=20260831-session-ranges"></script>
+</body>
+</html>
