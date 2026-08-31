@@ -453,6 +453,16 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         'immersive-vr': false
     };
     const modeName = (mode: ImmersiveXrMode): 'AR' | 'VR' => mode === 'immersive-ar' ? 'AR' : 'VR';
+    const setXrAvailable = (mode: ImmersiveXrMode, available: boolean): void => {
+        xrSupport[mode] = available;
+        // PlayCanvas separately caches availability. Keep its cache aligned
+        // with the direct browser probe so a Quest discovered after page load
+        // can start immediately instead of waiting for another engine event.
+        const availability = (xrManager as unknown as {
+            _available?: Partial<Record<ImmersiveXrMode, boolean>>;
+        })._available;
+        if (availability) availability[mode] = available;
+    };
     const updateXrButtons = (): void => {
         const update = (button: HTMLButtonElement, mode: ImmersiveXrMode): void => {
             const name = modeName(mode);
@@ -460,21 +470,24 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             button.disabled = activeXrMode !== null && activeXrMode !== mode;
             button.textContent = activeXrMode === mode
                 ? `Exit ${name}`
-                : (xrSupport[mode] ? `Enter ${name}` : `${name} diagnostics`);
+                : `Enter ${name}`;
+            button.title = xrSupport[mode]
+                ? `Start immersive ${name}`
+                : `Try immersive ${name}; the viewer will explain any browser or origin restriction`;
         };
         update(ui.ar, 'immersive-ar');
         update(ui.vr, 'immersive-vr');
     };
     const refreshXrSupport = async (): Promise<void> => {
-        if (!window.isSecureContext || !xr) {
-            xrSupport['immersive-ar'] = false;
-            xrSupport['immersive-vr'] = false;
+        if (!xr) {
+            setXrAvailable('immersive-ar', false);
+            setXrAvailable('immersive-vr', false);
         } else {
             const probe = async (mode: ImmersiveXrMode): Promise<void> => {
                 try {
-                    xrSupport[mode] = await xr.isSessionSupported(mode);
+                    setXrAvailable(mode, await xr.isSessionSupported(mode));
                 } catch (error) {
-                    xrSupport[mode] = false;
+                    setXrAvailable(mode, false);
                     ui.notice.textContent = `${modeName(mode)} capability probe failed: ${String(error)}`;
                     ui.notice.dataset.level = 'error';
                 }
@@ -486,8 +499,17 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         updateXrButtons();
     };
     await refreshXrSupport();
+    xrManager.on('available', (mode: ImmersiveXrMode, available: boolean) => {
+        if (mode !== 'immersive-ar' && mode !== 'immersive-vr') return;
+        setXrAvailable(mode, available);
+        updateXrButtons();
+    });
     xr?.addEventListener('devicechange', refreshXrSupport);
     window.addEventListener('focus', refreshXrSupport);
+    window.addEventListener('pageshow', refreshXrSupport);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void refreshXrSupport();
+    });
 
     xrManager.on('start', () => {
         // Headsets rotate far more often than they translate. Radial ordering
@@ -570,20 +592,15 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         const name = modeName(mode);
         xrDebug.startAttempts++;
         xrDebug.lastStartError = null;
-        if (!window.isSecureContext) {
-            ui.notice.textContent = `${name} is blocked because this LAN page is HTTP. Use the same-origin HTTPS build or configure the EMS viewer HTTPS certificate.`;
-            ui.notice.dataset.level = 'error';
-            return;
-        }
         if (!xr) {
-            ui.notice.textContent = 'This browser does not expose WebXR. On Quest, open the HTTPS address in Meta Browser; for desktop VR, ensure Meta Quest Link and the OpenXR runtime are active.';
+            ui.notice.textContent = window.isSecureContext
+                ? 'This browser does not expose WebXR. In Meta Browser, enable WebXR and reload the viewer.'
+                : `Meta Browser is not treating ${window.location.origin} as secure. Add that exact origin—including port—to “Insecure origins treated as secure”, relaunch the browser, and reopen the viewer.`;
             ui.notice.dataset.level = 'error';
             return;
         }
         if (!xrSupport[mode]) {
-            ui.notice.textContent = mode === 'immersive-ar'
-                ? 'Immersive AR is not currently reported as available. Open this HTTPS page in Meta Quest Browser and press the button again.'
-                : 'Immersive VR is not currently reported as available. Reconnect Link/OpenXR and press the button again.';
+            ui.notice.textContent = `${name} is not currently reported as available by Meta Browser. Reload the page after changing browser flags, then try again.`;
             ui.notice.dataset.level = 'error';
             return;
         }

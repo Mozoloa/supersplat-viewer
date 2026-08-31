@@ -160,8 +160,15 @@ button:disabled {
 }
 
 @media (max-width: 560px) {
-    .toolbar { align-items: flex-start; }
+    .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
     .brand { padding: 8px 10px; }
+    .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .status-card { bottom: max(56px, calc(env(safe-area-inset-bottom) + 48px)); }
     .hint { left: 14px; right: auto; }
 }
