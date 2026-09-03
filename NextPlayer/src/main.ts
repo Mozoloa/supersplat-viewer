@@ -21,6 +21,7 @@ import { SplatStreamPlayer, SplatStreamSource } from './splat-stream';
 import { SplatVideoPlayer, SplatVideoSource } from './splat-video';
 import { XrStatsOverlay } from './xr-stats-overlay';
 import { isSameOriginMedia } from './media-request';
+import { playStereoVideo } from './stereo-video';
 
 type XrInput = {
     gamepad?: Gamepad;
@@ -131,6 +132,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     if (!contentParam) throw new Error('NextPlayer requires a ?content= URL.');
 
     const contentUrl = new URL(contentParam, location.href).href;
+    if (query.get('projection') === 'stereo') return playStereoVideo(app, camera, contentRoot, contentUrl, ui);
     ui.headline.textContent = 'Reading authored placement…';
     camera.addComponent('camera');
     const xrManager = app.xr;
