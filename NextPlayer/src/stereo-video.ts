@@ -24,11 +24,12 @@ export async function playStereoVideo(app: AppBase, camera: Entity, root: Entity
             uniform mat4 matrix_view;
             uniform mat4 matrix_projection;
             uniform uint view_index;
+            uniform float stereoActive;
             varying vec3 direction;
             flat varying float eye;
             void main(void) {
                 direction = vertex_position;
-                eye = float(view_index);
+                eye = float(view_index) * stereoActive;
                 // Rotation only: VR180 is a fixed viewpoint, not a 6DoF scene.
                 gl_Position = matrix_projection * vec4(mat3(matrix_view) * vertex_position * 10.0, 1.0);
             }`,
@@ -49,8 +50,11 @@ export async function playStereoVideo(app: AppBase, camera: Entity, root: Entity
     material.cull = CULLFACE_NONE;
     material.depthWrite = false;
     material.setParameter('videoTexture', texture);
-    root.addComponent('render', { meshInstances: [new MeshInstance(createSphere(app.graphicsDevice,
-        { radius: 1, latitudeBands: 32, longitudeBands: 64 }), material)] });
+    const sphere = new MeshInstance(createSphere(app.graphicsDevice,
+        { radius: 1, latitudeBands: 32, longitudeBands: 64 }), material);
+    // This background follows head rotation; world-space culling must not hide it.
+    sphere.cull = false;
+    root.addComponent('render', { meshInstances: [sphere] });
     ui.headline.textContent = 'Stereo';
     ui.detail.textContent = 'Loading video…';
     ui.ar.hidden = true;
@@ -104,6 +108,7 @@ export async function playStereoVideo(app: AppBase, camera: Entity, root: Entity
     });
     const xr = app.xr;
     const refreshXr = (): void => {
+        material.setParameter('stereoActive', xr?.active ? 1 : 0);
         ui.vr.dataset.available = String(Boolean(xr?.isAvailable('immersive-vr')));
         ui.vr.disabled = !xr?.isAvailable('immersive-vr');
         ui.vr.textContent = xr?.active ? 'Exit VR' : 'Enter VR';
