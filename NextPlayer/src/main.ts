@@ -19,7 +19,7 @@ import {
 } from './scene-manifest';
 import { SplatStreamPlayer, SplatStreamSource } from './splat-stream';
 import { SplatVideoPlayer, SplatVideoSource } from './splat-video';
-import { XrStatsOverlay } from './xr-stats-overlay';
+import { desktopNavigation } from './desktop-navigation';
 import { isSameOriginMedia } from './media-request';
 import { playStereoVideo } from './stereo-video';
 
@@ -202,8 +202,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     const cameraComponent = configureCamera(camera, manifest);
     applyMatrix(camera, authoredCamera);
     applyMatrix(contentRoot, authoredContent);
-    const xrStatsOverlay = new XrStatsOverlay(app, camera);
-    window.addEventListener('beforeunload', () => xrStatsOverlay.destroy(), { once: true });
+    const resetNavigation = desktopNavigation(app, camera, contentRoot, manifest.grabPivot);
 
     const webglContext = (app.graphicsDevice as unknown as { gl?: WebGL2RenderingContext }).gl;
     const webglMultiview = webglContext?.getExtension('OVR_multiview2') ?? null;
@@ -222,12 +221,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     let xrFrameCount = 0;
     let xrFrameTotalMs = 0;
     let xrWorstFrameMs = 0;
-    let xrWindowFrameCount = 0;
-    let xrWindowFrameTotalMs = 0;
-    let xrWindowWorstFrameMs = 0;
-    let xrSortStartCount = 0;
-    let xrSortStartTotalMs = 0;
-    let lastXrOverlayUpdate = 0;
     let lastDiagnosticUpdate = 0;
     let completedSorts = 0;
     let completedSortTotalMs = 0;
@@ -442,6 +435,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             applyMatrix(camera, authoredCamera);
             applyMatrix(contentRoot, authoredContent);
         }
+        resetNavigation();
         ui.notice.textContent = 'Placement reset exactly.';
         ui.notice.dataset.level = 'ok';
     };
@@ -531,13 +525,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         xrFrameCount = 0;
         xrFrameTotalMs = 0;
         xrWorstFrameMs = 0;
-        xrWindowFrameCount = 0;
-        xrWindowFrameTotalMs = 0;
-        xrWindowWorstFrameMs = 0;
-        xrSortStartCount = completedSorts;
-        xrSortStartTotalMs = completedSortTotalMs;
-        lastXrOverlayUpdate = 0;
-        xrStatsOverlay.visible = true;
         updateXrButtons();
         xrAlignmentPending = true;
         let frames = 0;
@@ -568,7 +555,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         activeXrMode = null;
         app.scene.gsplat.radialSorting = desktopRadialSorting;
         ui.diagnostics.hidden = false;
-        xrStatsOverlay.visible = false;
         recentSortTimes.length = 0;
         xrDebug.activeMode = null;
         xrDebug.endedSessions++;
@@ -576,6 +562,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         applyMatrix(camera, authoredCamera);
         applyMatrix(contentRoot, authoredContent);
         resetContent = authoredContent.clone();
+        resetNavigation();
         refreshXrSupport();
         resumeBackgroundCache();
         refreshDiagnostics();
@@ -644,7 +631,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     ui.ar.addEventListener('click', () => startXr('immersive-ar'));
     ui.vr.addEventListener('click', () => startXr('immersive-vr'));
 
-    const controllerButtonState = new WeakMap<object, boolean>();
     app.on('update', (dt: number) => {
         const now = performance.now();
         if (xrManager.active && !xrAlignmentPending) {
@@ -652,9 +638,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             xrFrameCount++;
             xrFrameTotalMs += frameMs;
             xrWorstFrameMs = Math.max(xrWorstFrameMs, frameMs);
-            xrWindowFrameCount++;
-            xrWindowFrameTotalMs += frameMs;
-            xrWindowWorstFrameMs = Math.max(xrWindowWorstFrameMs, frameMs);
         }
         if (!xrManager.active && now - lastDiagnosticUpdate >= 1000) {
             lastDiagnosticUpdate = now;
@@ -667,44 +650,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         }
 
         const sources = (xrManager.input.inputSources || []) as unknown as XrInput[];
-        for (const source of sources) {
-            const previous = controllerButtonState.get(source as object) ?? false;
-            const statsPressed = Boolean(source.gamepad?.buttons[4]?.pressed);
-            if (statsPressed && !previous) xrStatsOverlay.toggle();
-            controllerButtonState.set(source as object, statsPressed);
-        }
-
-        if (xrStatsOverlay.visible && now - lastXrOverlayUpdate >= 500) {
-            lastXrOverlayUpdate = now;
-            const averageFrameMs = xrWindowFrameCount > 0 ? xrWindowFrameTotalMs / xrWindowFrameCount : 0;
-            const renderFps = averageFrameMs > 0 ? 1000 / averageFrameMs : 0;
-            const xrSorts = completedSorts - xrSortStartCount;
-            const averageSortMs = xrSorts > 0
-                ? (completedSortTotalMs - xrSortStartTotalMs) / xrSorts
-                : 0;
-            const vram = app.stats.vram;
-            const trackedVram = vram.tex + vram.vb + vram.ib + vram.ub + vram.sb;
-            const streamStats = animationPlayer instanceof SplatStreamPlayer
-                ? animationPlayer.performanceStats
-                : null;
-            xrStatsOverlay.update([
-                'EMS XR diagnostics',
-                'QUALITY FULL BASELINE',
-                `Render ${renderFps.toFixed(1)} fps · ${averageFrameMs.toFixed(1)} ms avg · ${xrWindowWorstFrameMs.toFixed(1)} worst`,
-                `Visual ${streamStats ? streamStats.deliveredFps.toFixed(1) : 'n/a'} fps · target ${xrManager.frameRate || '?'} Hz`,
-                `Sort ${app.stats.frame.gsplatSort.toFixed(1)} ms last · ${averageSortMs.toFixed(1)} avg · ${xrSorts} completed`,
-                `Splats ${streamStats ? streamStats.submittedSplats.toLocaleString() : loadedSplats.toLocaleString()}${streamStats ? ` / ${streamStats.sourceSplats.toLocaleString()}` : ''}`,
-                `Content scale ${contentRoot.getLocalScale().x.toFixed(3)}x`,
-                `Prepare ${streamStats ? streamStats.averageParseUploadMs.toFixed(0) : 'n/a'} ms · centers ${streamStats ? streamStats.averageCentersMs.toFixed(0) : 'n/a'} · textures ${streamStats ? streamStats.averageTexturesMs.toFixed(0) : 'n/a'}`,
-                `Read ${streamStats ? streamStats.averageNetworkMs.toFixed(0) : 'n/a'} ms · cache ${streamStats ? `${streamStats.cacheFrames}/${streamStats.cacheFrameCount}` : 'n/a'}`,
-                `${app.graphicsDevice.deviceType} · ${rendererName()} · ${(trackedVram / 1048576).toFixed(0)} MB VRAM`,
-                `XR GPU ${xrGpuBindingPresent ? 'yes' : 'no'} · WebGL multiview ${webglMultiview ? 'yes' : 'no'}`
-            ]);
-            xrWindowFrameCount = 0;
-            xrWindowFrameTotalMs = 0;
-            xrWindowWorstFrameMs = 0;
-        }
-
         if (activeGrab) {
             const pressed = !!activeGrab.source.gamepad?.buttons[1]?.pressed;
             if (!pressed || !readControllerMatrix(activeGrab.source, CONTROLLER_POSE)) {
