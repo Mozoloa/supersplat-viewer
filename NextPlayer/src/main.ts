@@ -64,21 +64,20 @@ const rowMajorToPlayCanvas = (values: Matrix4): Mat4 => new Mat4().set([
     values[3], values[7], values[11], values[15]
 ]);
 
-const applyMatrix = (entity: Entity, matrix: Mat4): void => {
+const applyMatrix = (entity: Entity, matrix: Mat4, amount = 1, uniformScale?: number): void => {
     const position = matrix.getTranslation(APPLY_POSITION);
     const scale = matrix.getScale(APPLY_SCALE);
     const rotationMatrix = APPLY_ROTATION_MATRIX.copy(matrix);
     const data = rotationMatrix.data;
-    const sx = scale.x || 1;
-    const sy = scale.y || 1;
-    const sz = scale.z || 1;
-    data[0] /= sx; data[1] /= sx; data[2] /= sx;
-    data[4] /= sy; data[5] /= sy; data[6] /= sy;
-    data[8] /= sz; data[9] /= sz; data[10] /= sz;
+    for (let column = 0; column < 3; column++) {
+        const divisor = [scale.x, scale.y, scale.z][column] || 1;
+        for (let row = 0; row < 3; row++) data[column * 4 + row] /= divisor;
+    }
+    if (uniformScale !== undefined) scale.set(uniformScale, uniformScale, uniformScale);
     const rotation = APPLY_ROTATION.setFromMat4(rotationMatrix);
-    entity.setLocalPosition(position);
-    entity.setLocalRotation(rotation);
-    entity.setLocalScale(scale);
+    entity.setLocalPosition(position.lerp(entity.getLocalPosition(), position, amount));
+    entity.setLocalRotation(amount === 1 ? rotation : rotation.slerp(entity.getLocalRotation(), rotation, amount));
+    entity.setLocalScale(scale.lerp(entity.getLocalScale(), scale, amount));
 };
 
 const readControllerMatrix = (source: XrInput, target: Mat4): boolean => {
@@ -656,20 +655,15 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
                 activeGrab = null;
                 return;
             }
-            applyMatrix(
-                contentRoot,
-                GRABBED_CONTENT_POSE.mul2(CONTROLLER_POSE, activeGrab.controllerToContent)
-            );
             const gamepad = activeGrab.source.gamepad;
             const triggerPressed = !!gamepad?.buttons[0]?.pressed;
             const stickY = gamepad?.axes ? (gamepad.axes[3] || gamepad.axes[1] || 0) : 0;
             if (triggerPressed && Math.abs(stickY) > XR_SCALE_DEAD_ZONE) {
-                activeGrab.scale = Math.max(
-                    XR_MIN_SCALE,
-                    Math.min(activeGrab.scale * (1 - stickY * dt * XR_SCALE_RATE), XR_MAX_SCALE)
-                );
+                activeGrab.scale = Math.max(XR_MIN_SCALE,
+                    Math.min(activeGrab.scale * Math.exp(-stickY * dt * XR_SCALE_RATE), XR_MAX_SCALE));
             }
-            contentRoot.setLocalScale(activeGrab.scale, activeGrab.scale, activeGrab.scale);
+            applyMatrix(contentRoot, GRABBED_CONTENT_POSE.mul2(CONTROLLER_POSE, activeGrab.controllerToContent),
+                1 - Math.exp(-dt / 0.04), activeGrab.scale);
             return;
         }
 
