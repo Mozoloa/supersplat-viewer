@@ -187,6 +187,9 @@ const embeddedPlyManifest = async (contentUrl: string): Promise<SceneManifest> =
         },
         asset: { uri: contentUrl, type: 'gaussian-splat', encoding: encodingForUrl(contentUrl) },
         contentToWorld: [...IDENTITY_MATRIX],
+        ...(isFiniteArray(metadata.grab_pivot, 3)
+            ? { grabPivot: metadata.grab_pivot as [number, number, number] }
+            : {}),
         captureCamera: {
             cameraToWorld: [...IDENTITY_MATRIX],
             intrinsics: {

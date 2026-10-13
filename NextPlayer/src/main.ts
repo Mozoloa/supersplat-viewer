@@ -40,6 +40,10 @@ const APPLY_ROTATION_MATRIX = new Mat4();
 const APPLY_ROTATION = new Quat();
 const CONTROLLER_POSE = new Mat4();
 const GRABBED_CONTENT_POSE = new Mat4();
+const GRAB_CURRENT_PIVOT = new Vec3();
+const GRAB_DESIRED_PIVOT = new Vec3();
+const GRAB_SMOOTHED_PIVOT = new Vec3();
+const GRAB_POSITION = new Vec3();
 const XR_SCALE_DEAD_ZONE = 0.1;
 const XR_SCALE_RATE = 0.3;
 const XR_MIN_SCALE = 0.01;
@@ -196,7 +200,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     const authoredContent = rowMajorToPlayCanvas(manifest.contentToWorld);
     let resetContent = authoredContent.clone();
     let xrAlignmentPending = false;
-    let activeGrab: { source: XrInput; controllerToContent: Mat4; scale: number } | null = null;
+    let activeGrab: { source: XrInput; controllerToContent: Mat4; scale: number; pivot: Vec3 } | null = null;
 
     const cameraComponent = configureCamera(camera, manifest);
     applyMatrix(camera, authoredCamera);
@@ -662,8 +666,18 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
                 activeGrab.scale = Math.max(XR_MIN_SCALE,
                     Math.min(activeGrab.scale * Math.exp(-stickY * dt * XR_SCALE_RATE), XR_MAX_SCALE));
             }
-            applyMatrix(contentRoot, GRABBED_CONTENT_POSE.mul2(CONTROLLER_POSE, activeGrab.controllerToContent),
-                1 - Math.exp(-dt / 0.04), activeGrab.scale);
+            const amount = 1 - Math.exp(-dt / 0.04);
+            const desired = GRABBED_CONTENT_POSE.mul2(CONTROLLER_POSE, activeGrab.controllerToContent);
+            contentRoot.getWorldTransform().transformPoint(activeGrab.pivot, GRAB_CURRENT_PIVOT);
+            desired.transformPoint(activeGrab.pivot, GRAB_DESIRED_PIVOT);
+            GRAB_SMOOTHED_PIVOT.lerp(GRAB_CURRENT_PIVOT, GRAB_DESIRED_PIVOT, amount);
+            applyMatrix(contentRoot, desired, amount, activeGrab.scale);
+            // Preserve the grabbed subject center while scaling, including
+            // during smoothing. Scaling around the capture origin pulled a
+            // distant subject into the camera instead of reducing its size.
+            contentRoot.getWorldTransform().transformPoint(activeGrab.pivot, GRAB_CURRENT_PIVOT);
+            GRAB_POSITION.copy(contentRoot.getPosition()).add(GRAB_SMOOTHED_PIVOT).sub(GRAB_CURRENT_PIVOT);
+            contentRoot.setPosition(GRAB_POSITION);
             return;
         }
 
@@ -676,7 +690,10 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         activeGrab = {
             source,
             controllerToContent,
-            scale: contentRoot.getLocalScale().x
+            scale: contentRoot.getLocalScale().x,
+            pivot: manifest.grabPivot
+                ? new Vec3(...manifest.grabPivot)
+                : contentRoot.getWorldTransform().clone().invert().transformPoint(CONTROLLER_POSE.getTranslation())
         };
     });
 };
