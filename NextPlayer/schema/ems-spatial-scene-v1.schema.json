@@ -24,7 +24,7 @@
       "required": ["uri", "type", "encoding"],
       "properties": {
         "uri": { "type": "string", "minLength": 1 }, "type": { "const": "gaussian-splat" },
-        "encoding": { "enum": ["ply", "supersplat-compressed-ply", "sog", "splatstream"] }
+        "encoding": { "enum": ["ply", "supersplat-compressed-ply", "sog", "splatstream", "gstex"] }
       }
     },
     "contentToWorld": { "$ref": "#/$defs/matrix4" },

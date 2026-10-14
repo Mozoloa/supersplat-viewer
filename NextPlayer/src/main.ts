@@ -22,6 +22,7 @@ import { SplatVideoPlayer, SplatVideoSource } from './splat-video';
 import { desktopNavigation } from './desktop-navigation';
 import { isSameOriginMedia } from './media-request';
 import { playStereoVideo } from './stereo-video';
+import { loadTexturedSplat } from './textured-splat';
 
 type XrInput = {
     gamepad?: Gamepad;
@@ -241,6 +242,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     });
     let animationPlayer: SplatStreamPlayer | SplatVideoPlayer | null = null;
     const rendererName = (): string => {
+        if (manifest.asset.encoding === 'gstex') return 'textured patches · CPU sort';
         switch (app.scene.gsplat.currentRenderer) {
             case GSPLAT_RENDERER_RASTER_GPU_SORT: return 'unified GPU sort';
             case GSPLAT_RENDERER_RASTER_CPU_SORT: return 'unified CPU sort';
@@ -268,7 +270,8 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             `Splats: ${(frame.gsplats || loadedSplats).toLocaleString()}`,
             `Frame: ${frame.ms.toFixed(1)} ms · ${frame.fps || 0} fps`,
             `Sort: ${frame.gsplatSort.toFixed(1)} ms last · ${averageSortMs.toFixed(1)} ms mean · ${sortRate.toFixed(1)}/s`,
-            `Sort basis: ${app.scene.gsplat.radialSorting ? 'radial distance (XR rotation-stable)' : 'camera direction'}`,
+            `Sort basis: ${manifest.asset.encoding === 'gstex' ? 'camera direction (GStex prototype)' :
+                app.scene.gsplat.radialSorting ? 'radial distance (XR rotation-stable)' : 'camera direction'}`,
             `Memory: ${(trackedVram / 1048576).toFixed(1)} MB tracked VRAM${heap ? ` · ${(heap / 1048576).toFixed(1)} MB JS heap` : ''}`,
             `XR rate: ${xrManager.frameRate ? `${xrManager.frameRate} Hz` : 'not active'}`,
             ...(animationPlayer?.diagnostics ?? [])
@@ -410,6 +413,11 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             stopBackgroundCache();
             player.destroy();
         }, { once: true });
+    } else if (manifest.asset.encoding === 'gstex') {
+        const textured = await loadTexturedSplat(app, camera, contentRoot, definition.assetUrl, reportProgress);
+        loadedSplats = textured.count;
+        staticDiagnostics.push(...textured.diagnostics);
+        window.addEventListener('beforeunload', textured.destroy, { once: true });
     } else {
         const splat = await loadSplat(app, contentRoot, definition.assetUrl, reportProgress);
         loadedSplats = splat.gsplat?.resource?.numSplats ?? 0;

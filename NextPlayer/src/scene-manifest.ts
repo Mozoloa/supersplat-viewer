@@ -1,4 +1,5 @@
 import { mediaFetch } from './media-request';
+import { readTexturedHeader } from './textured-splat';
 
 export type Matrix4 = [
     number, number, number, number,
@@ -21,7 +22,7 @@ export interface SceneManifest {
     asset: {
         uri: string;
         type: 'gaussian-splat';
-        encoding: 'ply' | 'supersplat-compressed-ply' | 'sog' | 'splatseq' | 'splatstream';
+        encoding: 'ply' | 'supersplat-compressed-ply' | 'sog' | 'splatseq' | 'splatstream' | 'gstex';
     };
     contentToWorld: Matrix4;
     captureCamera: {
@@ -95,6 +96,7 @@ const validateManifest = (value: unknown): SceneManifest => {
 
 const encodingForUrl = (contentUrl: string): SceneManifest['asset']['encoding'] => {
     const pathname = new URL(contentUrl, location.href).pathname.toLowerCase();
+    if (pathname.endsWith('.gstex')) return 'gstex';
     if (pathname.endsWith('.sog')) return 'sog';
     if (pathname.endsWith('.splatstream')) return 'splatstream';
     if (pathname.endsWith('.splatseq')) return 'splatseq';
@@ -105,7 +107,7 @@ export const deriveManifestUrl = (contentUrl: string): string => {
     const url = new URL(contentUrl, location.href);
     url.pathname = url.pathname
         .replace(/\.compressed\.ply$/i, '.ems.json')
-        .replace(/\.(ply|sog|splatstream)$/i, '.ems.json');
+        .replace(/\.(ply|sog|splatstream|gstex)$/i, '.ems.json');
     return url.href;
 };
 
@@ -229,6 +231,12 @@ export const loadSceneDefinition = async (
         };
     } catch (error) {
         if (explicitManifestUrl) throw error;
+        if (/\.gstex(?:$|[?#])/i.test(contentUrl)) {
+            const response = await mediaFetch(contentUrl, { headers: { Range: 'bytes=0-65535' } });
+            if (response.status !== 206) throw new Error('GStex requires a bounded metadata range.');
+            const { header } = readTexturedHeader(await response.arrayBuffer());
+            return { manifest: validateManifest(header.scene), manifestUrl: null, assetUrl: contentUrl, authored: true, warning: null };
+        }
         if (/\.ply(?:$|[?#])/i.test(contentUrl)) {
             try {
                 return {
