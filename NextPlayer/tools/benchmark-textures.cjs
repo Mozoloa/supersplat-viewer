@@ -35,7 +35,8 @@ async function main() {
     const results = [];
     try {
         browser = await chromium.launch({ channel: 'msedge', headless: true,
-            args: ['--enable-gpu', '--disable-software-rasterizer', '--disable-background-timer-throttling'] });
+            args: ['--enable-gpu', '--disable-software-rasterizer', '--disable-background-timer-throttling',
+                '--disable-frame-rate-limit', '--disable-gpu-vsync'] });
         for (const [index, asset] of config.assets.entries()) {
             const context = await browser.newContext({ viewport: { width: 3840, height: 1920 }, deviceScaleFactor: 1 });
             const page = await context.newPage();
@@ -92,9 +93,11 @@ async function main() {
                         query=gl.createQuery();gl.beginQuery(extension.TIME_ELAPSED_EXT,query);started=performance.now();
                     };
                     const after=()=>{gl.endQuery(extension.TIME_ELAPSED_EXT);queries.push(query);cpu.push(performance.now()-started);};
-                    app.on('prerender',before);app.on('postrender',after);
+                    // Include uploads and scene preparation as well as draw
+                    // passes; timing only render would omit ordinary GS data work.
+                    app.on('frameupdate',before);app.on('frameend',after);
                     await waitFrames(150);
-                    app.off('prerender',before);app.off('postrender',after);
+                    app.off('frameupdate',before);app.off('frameend',after);
                     await waitFrames(10);
                     for(const q of queries) {
                         if(gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE)&&!gl.getParameter(extension.GPU_DISJOINT_EXT)) values.push(gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6);
