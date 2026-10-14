@@ -47,7 +47,7 @@ async function main() {
             await page.goto(url);
             await page.waitForFunction(() => /Authored view ready|Legacy view ready|could not load/.test(document.querySelector('#headline').textContent), { timeout: 60000 });
             if ((await page.locator('#headline').textContent()).includes('could not load')) throw new Error(await page.locator('#notice').textContent());
-            const measured = await page.evaluate(async () => {
+            const measured = await page.evaluate(async ({ distances }) => {
                 const { app } = await document.querySelector('pc-app').ready();
                 const { entity: camera } = await document.querySelector('pc-entity[name="camera"]').ready();
                 const { entity: content } = await document.querySelector('pc-entity[name="content-root"]').ready();
@@ -70,12 +70,12 @@ async function main() {
                     let done=0; const listener=()=>{ if (++done>=count) { app.off('frameend',listener);resolve(); } };
                     app.on('frameend',listener);
                 });
-                for (const elevation of [0,45,-35]) {
+                for (const elevation of [0,45,-35]) for (const distance of distances) {
                     const theta=elevation*Math.PI/180;
-                    const y=original.y-pivot[1], z=original.z-pivot[2];
-                    const position=[original.x,pivot[1]+y*Math.cos(theta)+z*Math.sin(theta),pivot[2]+z*Math.cos(theta)-y*Math.sin(theta)];
+                    const y=(original.y-pivot[1])*distance, z=(original.z-pivot[2])*distance;
+                    const position=[pivot[0]+(original.x-pivot[0])*distance,pivot[1]+y*Math.cos(theta)+z*Math.sin(theta),pivot[2]+z*Math.cos(theta)-y*Math.sin(theta)];
                     camera.setPosition(...position);
-                    if (elevation) camera.lookAt(...pivot); else camera.setRotation(rotation);
+                    if (elevation || distance !== 1) camera.lookAt(...pivot); else camera.setRotation(rotation);
                     const axis=camera.right.clone().mulScalar(.032);
                     right.setPosition(camera.getPosition().clone().add(axis)); right.setRotation(camera.getRotation());
                     camera.setPosition(camera.getPosition().clone().sub(axis));
@@ -131,12 +131,12 @@ async function main() {
                         diagnostics:document.querySelector('#diagnostics').textContent})}`);
                     values.sort((a,b)=>a-b);
                     const mean=values.reduce((a,b)=>a+b,0)/values.length;
-                    scenarios.push({elevation,stereoGpuMeanMs:mean,stereoGpuP90Ms:values[Math.floor(values.length*.9)],
+                    scenarios.push({elevation,distance,stereoGpuMeanMs:mean,stereoGpuP90Ms:values[Math.floor(values.length*.9)],
                         renderSubmitMeanMs:cpu.reduce((a,b)=>a+b,0)/cpu.length,visiblePixels:visible,samples:values.length});
                 }
                 return {renderer,resolution:'3840×1920, two 1920² eyes',headsetMeasured:false,
                     diagnostics:document.querySelector('#diagnostics').textContent,scenarios};
-            }).catch(error=>{console.error(JSON.stringify({name:asset.name,errors}));throw error;});
+            }, { distances: config.distances || [1] }).catch(error=>{console.error(JSON.stringify({name:asset.name,errors}));throw error;});
             results.push({name:asset.name,bytes:fs.statSync(asset.file).size,...measured,errors});
             await context.close();
             console.log(JSON.stringify(results.at(-1)));
