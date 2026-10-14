@@ -67,8 +67,8 @@ async function main() {
                 app.graphicsDevice.resizeCanvas(3840,1920);
                 const scenarios = [];
                 const waitFrames = count => new Promise(resolve => {
-                    let done=0; const listener=()=>{ if (++done>=count) { app.off('postrender',listener);resolve(); } };
-                    app.on('postrender',listener);
+                    let done=0; const listener=()=>{ if (++done>=count) { app.off('frameend',listener);resolve(); } };
+                    app.on('frameend',listener);
                 });
                 for (const elevation of [0,45,-35]) {
                     const theta=elevation*Math.PI/180;
@@ -98,14 +98,20 @@ async function main() {
                     app.on('frameupdate',before);app.on('frameend',after);
                     await waitFrames(150);
                     app.off('frameupdate',before);app.off('frameend',after);
-                    await waitFrames(10);
+                    app.autoRender=false;gl.flush();
+                    const deadline=performance.now()+3000;
+                    while(queries.some(q=>!gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE))&&performance.now()<deadline)
+                        await new Promise(resolve=>setTimeout(resolve,10));
                     for(const q of queries) {
                         if(gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE)&&!gl.getParameter(extension.GPU_DISJOINT_EXT)) values.push(gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6);
                         gl.deleteQuery(q);
                     }
                     if(values.length<100) throw new Error('Too few valid GPU timing samples.');
                     const pixels = new Uint8Array(3840*1920*4);
-                    gl.readPixels(0,0,3840,1920,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+                    app.autoRender=true;
+                    await new Promise(resolve=>app.once('postrender',()=>{
+                        gl.readPixels(0,0,3840,1920,gl.RGBA,gl.UNSIGNED_BYTE,pixels);resolve();
+                    }));
                     let visible=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>50)visible++;
                     if(visible<1000)throw new Error(`Loaded scene rendered no visible geometry: ${JSON.stringify({
                         elevation,drawCalls:app.stats.drawCalls, camera:camera.getPosition().toString(),
