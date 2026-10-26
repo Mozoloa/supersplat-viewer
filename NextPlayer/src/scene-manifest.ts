@@ -170,16 +170,22 @@ const embeddedPlyManifest = async (contentUrl: string): Promise<SceneManifest> =
     const line = header.slice(0, end).split(/\r?\n/).find(value => value.startsWith(prefix));
     if (!line) throw new Error('Static asset has no EMS camera metadata.');
     const metadata = JSON.parse(line.slice(prefix.length)) as Record<string, unknown>;
+    // Stored EMS result metadata uses camelCase; PLY exporters use snake_case.
+    // Both describe the same capture camera and placement.
+    const coordinates = metadata.coordinate_system ?? metadata.coordinateSystem;
+    const focalLength = metadata.focal_length_px ?? metadata.focalLengthPx;
+    const cameraToWorld = metadata.camera_to_world ?? metadata.cameraToWorld;
+    const grabPivot = metadata.grab_pivot ?? metadata.grabPivot;
     if (metadata.format !== 'ems-spatial' || metadata.version !== 1
-        || metadata.coordinate_system !== 'right-handed-y-up-negative-z-forward'
+        || coordinates !== 'right-handed-y-up-negative-z-forward'
         || !Number.isFinite(metadata.width) || Number(metadata.width) < 1
         || !Number.isFinite(metadata.height) || Number(metadata.height) < 1
-        || !Number.isFinite(metadata.focal_length_px) || Number(metadata.focal_length_px) <= 0) {
+        || !Number.isFinite(focalLength) || Number(focalLength) <= 0) {
         throw new Error('Static asset EMS camera metadata is invalid.');
     }
     const width = Number(metadata.width);
     const height = Number(metadata.height);
-    const focal = Number(metadata.focal_length_px);
+    const focal = Number(focalLength);
     return {
         format: 'ems-spatial-scene',
         version: 1,
@@ -189,11 +195,11 @@ const embeddedPlyManifest = async (contentUrl: string): Promise<SceneManifest> =
         },
         asset: { uri: contentUrl, type: 'gaussian-splat', encoding: encodingForUrl(contentUrl) },
         contentToWorld: [...IDENTITY_MATRIX],
-        ...(isFiniteArray(metadata.grab_pivot, 3)
-            ? { grabPivot: metadata.grab_pivot as [number, number, number] }
+        ...(isFiniteArray(grabPivot, 3)
+            ? { grabPivot: grabPivot as [number, number, number] }
             : {}),
         captureCamera: {
-            cameraToWorld: [...IDENTITY_MATRIX],
+            cameraToWorld: isFiniteArray(cameraToWorld, 16) ? cameraToWorld as Matrix4 : [...IDENTITY_MATRIX],
             intrinsics: {
                 projection: 'perspective', fx: focal, fy: focal,
                 cx: width * 0.5, cy: height * 0.5, width, height
