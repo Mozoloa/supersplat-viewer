@@ -163,10 +163,14 @@ const readFrame = async message => {
         } finally {
             access.close();
         }
-        await writeMeta(false);
-        return { hit: true, buffer, byteOffset, stats: await storageSnapshot() };
+        // Reading does not change cache membership or storage usage. Deliver
+        // the bytes without quota queries, metadata flushes or an index scan.
+        // Access is persisted at open and on cache mutations instead.
+        meta.lastAccess = Date.now();
+        return { hit: true, buffer, byteOffset };
     } catch {
         meta.cached[index] = false;
+        meta.cachedBytes = Math.max(0, meta.cachedBytes - message.length);
         try { await streamDirectory.removeEntry(frameName(index)); } catch {}
         await writeMeta(true);
         return { hit: false, stats: await storageSnapshot() };
@@ -334,6 +338,7 @@ export class PersistentFrameCache {
     private nextId = 1;
     private writeBehind: Promise<void> | null = null;
     private destroyed = false;
+    private failure: Error | null = null;
     private statsValue: PersistentCacheStats;
 
     readHits = 0;
@@ -365,18 +370,22 @@ export class PersistentFrameCache {
             else request.resolve(result);
         };
         worker.onerror = event => {
-            const error = new Error(event.message || 'Local cache worker crashed.');
-            for (const request of this.pending.values()) request.reject(error);
-            this.pending.clear();
+            this.close(new Error(event.message || 'Local cache worker crashed.'));
         };
+        worker.onmessageerror = () => this.close(new Error('Local cache worker returned unreadable data.'));
     }
 
     private request(message: Record<string, unknown>, transfer: Transferable[] = []): Promise<WorkerResult> {
-        if (this.destroyed) return Promise.reject(new Error('Local cache is closed.'));
+        if (this.destroyed) return Promise.reject(this.failure ?? new Error('Local cache is closed.'));
         const id = this.nextId++;
         return new Promise<WorkerResult>((resolve, reject) => {
             this.pending.set(id, { resolve, reject });
-            this.worker.postMessage({ id, ...message }, transfer);
+            try {
+                this.worker.postMessage({ id, ...message }, transfer);
+            } catch (error) {
+                this.pending.delete(id);
+                reject(error instanceof Error ? error : new Error(String(error)));
+            }
         });
     }
 
@@ -392,18 +401,26 @@ export class PersistentFrameCache {
     }
 
     has(index: number): boolean {
-        return this.cachedIndices.has(index);
+        return !this.destroyed && this.cachedIndices.has(index);
     }
 
     async read(index: number, byteOffset = 0): Promise<ArrayBuffer | Uint8Array | null> {
         if (!this.has(index)) return null;
         const started = performance.now();
-        const result = await this.request({
-            type: 'read',
-            index,
-            length: this.frameLengths[index],
-            byteOffset
-        });
+        let result: WorkerResult;
+        try {
+            result = await this.request({
+                type: 'read',
+                index,
+                length: this.frameLengths[index],
+                byteOffset
+            });
+        } catch (error) {
+            // OPFS is optional. Disable a failed worker once and let the
+            // authoritative range source serve this and subsequent frames.
+            this.close(error instanceof Error ? error : new Error(String(error)));
+            return null;
+        }
         this.applyStats(result.stats);
         if (!result.hit || !result.buffer) return null;
         this.readHits++;
@@ -457,14 +474,21 @@ export class PersistentFrameCache {
     }
 
     destroy(): void {
+        this.close(new Error('Local cache was closed.'));
+    }
+
+    private close(error: Error): void {
         if (this.destroyed) return;
         this.destroyed = true;
+        this.failure = error;
+        this.lastWriteError = error.message;
         this.worker.terminate();
-        for (const request of this.pending.values()) request.reject(new Error('Local cache was closed.'));
+        for (const request of this.pending.values()) request.reject(error);
         this.pending.clear();
     }
 
     get diagnostics(): string {
+        if (this.failure) return `unavailable (${this.failure.message}); using streamed playback`;
         const stats = this.statsValue;
         const averageReadMs = this.readHits > 0 ? this.readTotalMs / this.readHits : 0;
         const percent = stats.totalBytes > 0 ? stats.cachedBytes / stats.totalBytes * 100 : 0;

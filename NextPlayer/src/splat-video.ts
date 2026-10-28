@@ -9,6 +9,7 @@ import {
 } from 'playcanvas';
 import { Mp4VideoDecoder } from './mp4-video-decoder';
 import { mediaFetch } from './media-request';
+import { PlaybackController, playAudio, type PlaybackState } from './playback-controller';
 
 const PROBE_BYTES = 16;
 const TILE = 16;
@@ -454,7 +455,9 @@ export interface SplatVideoPlayerOptions {
 
 export class SplatVideoPlayer {
     readonly manifest: SplatVideoManifest;
-    playing = false;
+    get playing(): boolean { return this.playback.state === 'playing'; }
+    get playbackState(): PlaybackState { return this.playback.state; }
+    get playbackError(): string | null { return this.playback.error; }
     droppedFrames = 0;
     currentSplatCount = 0;
 
@@ -463,6 +466,13 @@ export class SplatVideoPlayer {
     private readonly source: SplatVideoSource;
     private readonly onStateChange?: () => void;
     private readonly audio: HTMLAudioElement | null;
+    private readonly playback: PlaybackController;
+    private playbackGeneration = 0;
+    private readonly audioErrorHandler = (): void => {
+        if (this.playing || this.playbackState === 'starting') {
+            this.playback.fail(new Error('Source audio could not be played.'));
+        }
+    };
     private readonly positionMin = new Float32Array(3);
     private readonly positionMax = new Float32Array(3);
     private readonly scaleMin = new Float32Array(3);
@@ -534,9 +544,15 @@ export class SplatVideoPlayer {
             : IDENTITY_RGBA_TO_LUMA;
         this.planes = Array.from({ length: this.manifest.attributes.plane_count }, () => null);
         this.audio = options.audioUrl ? new Audio(options.audioUrl) : null;
+        this.playback = new PlaybackController(() => {
+            this.playbackOffset = this.playbackTime();
+            this.audio?.pause();
+            ++this.playbackGeneration;
+        }, () => this.onStateChange?.());
         if (this.audio) {
             this.audio.preload = 'auto';
             this.audio.loop = true;
+            this.audio.addEventListener('error', this.audioErrorHandler);
             this.audio.load();
         }
         this.app.on('frameend', this.frameEndHandler);
@@ -640,45 +656,46 @@ export class SplatVideoPlayer {
         return this.entity;
     }
 
-    async play(): Promise<void> {
-        if (this.destroyed) return;
-        const duration = this.manifest.duration_seconds ?? this.manifest.frame_count / this.manifest.fps;
-        if (this.audio) {
-            const offset = this.manifest.audio_offset_seconds ?? 0;
-            const localTime = Math.max(0, this.audio.currentTime - offset);
-            if (localTime >= duration || this.audio.currentTime < offset) {
-                this.audio.currentTime = offset;
-                this.playbackOffset = 0;
-            } else {
-                this.playbackOffset = localTime;
+    play(): Promise<void> {
+        return this.playback.start(async signal => {
+            ++this.playbackGeneration;
+            const duration = this.manifest.duration_seconds ?? this.manifest.frame_count / this.manifest.fps;
+            if (this.audio) {
+                if (this.audio.error) this.audio.load();
+                const offset = this.manifest.audio_offset_seconds ?? 0;
+                const localTime = Math.max(0, this.audio.currentTime - offset);
+                if (localTime >= duration || this.audio.currentTime < offset) {
+                    this.audio.currentTime = offset;
+                    this.playbackOffset = 0;
+                } else {
+                    this.playbackOffset = localTime;
+                }
+                await playAudio(this.audio, signal);
             }
-            await this.audio.play();
-        }
-        this.playbackStartedAt = performance.now();
-        this.playing = true;
-        this.onStateChange?.();
+            this.playbackStartedAt = performance.now();
+        });
     }
 
     pause(): void {
-        this.playbackOffset = this.playbackTime();
-        this.audio?.pause();
-        this.playing = false;
-        this.onStateChange?.();
+        this.playback.pause();
     }
 
     async toggle(): Promise<void> {
-        if (this.playing) this.pause();
+        if (this.playing || this.playbackState === 'starting') this.pause();
         else await this.play();
     }
 
     destroy(): void {
+        if (this.destroyed) return;
         this.destroyed = true;
+        this.playback.destroy();
         this.app.off('frameend', this.frameEndHandler);
         window.clearInterval(this.pollTimer);
         this.pollTimer = 0;
         this.decoder?.destroy();
         this.decoder = null;
         this.audio?.pause();
+        this.audio?.removeEventListener('error', this.audioErrorHandler);
         this.audio?.removeAttribute('src');
         this.audio?.load();
         if (this.entity?.gsplat) this.entity.removeComponent('gsplat');
@@ -697,9 +714,11 @@ export class SplatVideoPlayer {
         if (index === this.currentFrame) return;
 
         this.frameBusy = true;
+        const generation = this.playbackGeneration;
         void this.handleVideoFrame(index).catch(error => {
-            console.error('[SplatVideo]', error);
-            this.pause();
+            if (!this.destroyed && this.playing && generation === this.playbackGeneration) {
+                this.playback.fail(error);
+            }
         }).finally(() => {
             this.frameBusy = false;
             // Catch a frame that became current while the previous one was
@@ -710,6 +729,8 @@ export class SplatVideoPlayer {
 
     private async handleVideoFrame(index: number): Promise<void> {
         if (this.destroyed || !this.decoder) return;
+        const generation = this.playbackGeneration;
+        const cancelled = (): boolean => this.destroyed || generation !== this.playbackGeneration;
         this.stage = 'decoding-native-video-frame';
         if (this.currentFrame >= 0) {
             const delta = (index - this.currentFrame + this.manifest.frame_count) % this.manifest.frame_count;
@@ -729,10 +750,15 @@ export class SplatVideoPlayer {
             this.residualTotalMs += performance.now() - residualStarted;
             return bytes;
         })();
+        // Observe side-data failures even if the decoder fails or this sample
+        // is cancelled before the combined await below.
+        void exactPromise.catch(() => undefined);
+        void residualPromise.catch(() => undefined);
         const videoWaitStarted = performance.now();
         const frame = await this.decoder.frame(index);
         this.videoWaitTotalMs += performance.now() - videoWaitStarted;
         try {
+            if (cancelled()) return;
             // Frame zero also unpacks planes for stable sorter centers. Later
             // frames keep only the decoder's RGBA atlas and fuse atlas lookup,
             // deinterleave and two texture writes into one tile-ordered pass.
@@ -741,10 +767,12 @@ export class SplatVideoPlayer {
             const textureReady = this.manifest.exact.layout === 'texture-ready-v1'
                 || this.manifest.exact.layout === 'texture-ready-v2';
             await this.copyVideoPlanes(frame, !textureReady || index === 0);
+            if (cancelled()) return;
             this.videoCopyTotalMs += performance.now() - videoCopyStarted;
             this.stage = 'waiting-exact-side-data';
             this.decodedFrames++;
             const [exact, residual] = await Promise.all([exactPromise, residualPromise]);
+            if (cancelled()) return;
             this.stage = 'materializing-textures';
             this.populatePlanes(exact);
             this.residualFrame = residual;

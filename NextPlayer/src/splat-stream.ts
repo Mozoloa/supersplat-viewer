@@ -4,6 +4,7 @@ import { GSplatCompressedResource } from 'playcanvas/build/playcanvas/src/scene/
 import { GSplatUnifiedSorter } from 'playcanvas/build/playcanvas/src/scene/gsplat-unified/gsplat-unified-sorter.js';
 import { PersistentFrameCache } from './persistent-frame-cache';
 import { mediaFetch } from './media-request';
+import { PlaybackController, playAudio, type PlaybackState } from './playback-controller';
 
 const MAGIC = 'EMSSPLAT';
 const VERSION = 1;
@@ -394,6 +395,7 @@ export class SplatStreamSource {
     private readonly frameLoads = new Map<number, Promise<PackedFrameBytes>>();
     private readonly localCacheFillLoads = new Map<number, Promise<void>>();
     private readonly frameReadByteOffsets: number[];
+    private readonly lifetime = new AbortController();
     // Long production clips cannot loop before this cache is displaced, so a
     // large byte LRU only adds browser pressure. Retain roughly two to five
     // compressed production frames, while small clips can still stay whole.
@@ -463,6 +465,7 @@ export class SplatStreamSource {
     }
 
     async readFrame(index: number): Promise<PackedFrameBytes> {
+        this.lifetime.signal.throwIfAborted();
         const cached = this.frameCache.get(index);
         if (cached) {
             // Refresh insertion order so the bounded cache behaves as an LRU.
@@ -484,11 +487,12 @@ export class SplatStreamSource {
             if (filling) {
                 try {
                     await filling;
-                } catch (error) {
-                    if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
+                } catch {
+                    // An optional cache fill must not block a demand read.
                 }
             }
             const local = await this.persistentCache?.read(index, this.frameReadByteOffsets[index]);
+            this.lifetime.signal.throwIfAborted();
             if (local) {
                 this.retainRawFrame(index, local);
                 return local;
@@ -496,7 +500,8 @@ export class SplatStreamSource {
             const started = performance.now();
             this.networkRequests++;
             try {
-                const result = await readRange(this.url, start, start + frame.length - 1);
+                const result = await readRange(this.url, start, start + frame.length - 1, this.lifetime.signal);
+                this.lifetime.signal.throwIfAborted();
                 this.downloadedBytes += result.byteLength;
                 this.retainRawFrame(index, result);
                 // One bounded copy is allowed to drain into the OPFS worker.
@@ -576,6 +581,7 @@ export class SplatStreamSource {
     }
 
     destroy(): void {
+        this.lifetime.abort();
         this.persistentCache?.destroy();
         this.frameCache.clear();
         this.frameCacheBytes = 0;
@@ -633,6 +639,8 @@ export class SplatStreamPlayer {
     private readonly source: SplatStreamSource;
     private readonly onStateChange?: () => void;
     private readonly audio: HTMLAudioElement | null;
+    private readonly playback: PlaybackController;
+    private playbackGeneration = 0;
     private readonly centerWorker: PackedCenterWorker | null;
     private readonly framePoses: FramePose[] | null;
     private readonly directSplatCapacity: number;
@@ -689,8 +697,15 @@ export class SplatStreamPlayer {
     private readonly audioEndedHandler = (): void => {
         if (this.playing && !this.destroyed) this.restartLoop();
     };
+    private readonly audioErrorHandler = (): void => {
+        if (this.playing || this.playbackState === 'starting') {
+            this.playback.fail(new Error('Source audio could not be played.'));
+        }
+    };
 
-    playing = false;
+    get playing(): boolean { return this.playback.state === 'playing'; }
+    get playbackState(): PlaybackState { return this.playback.state; }
+    get playbackError(): string | null { return this.playback.error; }
     droppedFrames = 0;
     currentSplatCount = 0;
 
@@ -709,6 +724,14 @@ export class SplatStreamPlayer {
         ));
         this.onStateChange = options.onStateChange;
         this.audio = options.audioUrl ? new Audio(options.audioUrl) : null;
+        this.playback = new PlaybackController(() => {
+            this.silentPlayhead = Math.min(this.playhead, this.manifest.duration_seconds);
+            this.audio?.pause();
+            ++this.playbackGeneration;
+            ++this.prefetchToken;
+            this.rawPrefetch = null;
+            this.rawPrefetchIndex = -1;
+        }, () => this.onStateChange?.());
         this.framePoses = this.manifest.frame_to_canonical?.map(values => {
             const matrix = new Mat4().set([
                 values[0], values[4], values[8], values[12],
@@ -734,6 +757,7 @@ export class SplatStreamPlayer {
             // manifest boundary, so the update loop alone can never observe
             // the old restart condition.
             this.audio.addEventListener('ended', this.audioEndedHandler);
+            this.audio.addEventListener('error', this.audioErrorHandler);
             this.audio.load();
         }
         this.updateHandler = () => this.update();
@@ -769,6 +793,7 @@ export class SplatStreamPlayer {
 
     private async createFrame(index: number, onProgress?: (progress: number) => void): Promise<BufferedFrame> {
         const frameBytes = await this.source.readFrame(index);
+        if (this.destroyed) throw new DOMException('Playback was closed.', 'AbortError');
         // Keep the costly stages busy without allocating another decoded
         // GSplat: while PlayCanvas parses/uploads this frame, fetch exactly one
         // predicted raw timeline sample into the bounded byte cache.
@@ -1346,64 +1371,34 @@ export class SplatStreamPlayer {
         return audioDuration > 0 ? Math.min(manifestDuration, audioDuration) : manifestDuration;
     }
 
-    private async waitForAudioMetadata(): Promise<void> {
-        if (!this.audio || this.audio.readyState >= HTMLMediaElement.HAVE_METADATA) return;
-        const audio = this.audio;
-        await new Promise<void>((resolve, reject) => {
-            const timeout = window.setTimeout(() => {
-                cleanup();
-                reject(new Error('Audio metadata did not arrive in time.'));
-            }, 10000);
-            const cleanup = (): void => {
-                window.clearTimeout(timeout);
-                audio.removeEventListener('loadedmetadata', loaded);
-                audio.removeEventListener('error', failed);
-            };
-            const loaded = (): void => { cleanup(); resolve(); };
-            const failed = (): void => { cleanup(); reject(new Error('The source audio could not be loaded.')); };
-            audio.addEventListener('loadedmetadata', loaded, { once: true });
-            audio.addEventListener('error', failed, { once: true });
+    play(): Promise<void> {
+        return this.playback.start(async signal => {
+            ++this.playbackGeneration;
+            // In-flight bytes may finish into the bounded cache, but an old
+            // prefetch must not steer the resumed timeline or start more work.
+            ++this.prefetchToken;
+            this.rawPrefetch = null;
+            this.rawPrefetchIndex = -1;
+            if (this.audio) {
+                if (this.audio.error) this.audio.load();
+                const offset = this.manifest.audio_offset_seconds ?? 0;
+                const localTime = this.playhead;
+                if (localTime >= this.loopDuration || this.audio.currentTime < offset) {
+                    this.audio.currentTime = offset;
+                }
+                await playAudio(this.audio, signal);
+            } else {
+                this.silentClockAnchor = performance.now() / 1000 - this.silentPlayhead;
+            }
         });
     }
 
-    async play(): Promise<void> {
-        if (this.playing) return;
-        // Stop the paused-state sequential prefetch loop. An already active
-        // request can finish, but it cannot start another neighbour afterward.
-        ++this.prefetchToken;
-        // A raw hint may have been selected before a pause or XR transition.
-        // Its bytes can finish into the bounded cache, but its old frame index
-        // must not steer the resumed timeline.
-        this.rawPrefetch = null;
-        this.rawPrefetchIndex = -1;
-        if (this.audio) {
-            await this.waitForAudioMetadata();
-            const offset = this.manifest.audio_offset_seconds ?? 0;
-            const localTime = this.playhead;
-            if (localTime >= this.loopDuration || this.audio.currentTime < offset) {
-                this.audio.currentTime = offset;
-            }
-            await this.audio.play();
-        } else {
-            this.silentClockAnchor = performance.now() / 1000 - this.silentPlayhead;
-        }
-        this.playing = true;
-        this.onStateChange?.();
-    }
-
     pause(): void {
-        if (!this.playing) return;
-        this.silentPlayhead = Math.min(this.playhead, this.manifest.duration_seconds);
-        this.audio?.pause();
-        this.playing = false;
-        this.rawPrefetch = null;
-        this.rawPrefetchIndex = -1;
-        if (this.currentFrame >= 0) this.prefetchFrom(this.currentFrame);
-        this.onStateChange?.();
+        this.playback.pause();
     }
 
     async toggle(): Promise<void> {
-        if (this.playing) this.pause();
+        if (this.playing || this.playbackState === 'starting') this.pause();
         else await this.play();
     }
 
@@ -1417,7 +1412,9 @@ export class SplatStreamPlayer {
         this.completedLoops++;
         if (this.audio) {
             this.audio.currentTime = offset;
-            void this.audio.play().catch(error => console.warn('[SplatStream] Audio loop restart failed:', error));
+            void this.audio.play().catch(error => {
+                if (this.playing && !this.destroyed) this.playback.fail(error);
+            });
         } else {
             this.silentPlayhead = 0;
             this.silentClockAnchor = performance.now() / 1000;
@@ -1457,6 +1454,7 @@ export class SplatStreamPlayer {
         // previous parse. It was predicted from the live audio clock, and any
         // remaining wait is deduplicated by SplatStreamSource.
         const requestedFrame = this.takeRawPipelineFrame() ?? this.desiredFrame;
+        const generation = this.playbackGeneration;
         this.foregroundLoad = this.ensureFrame(requestedFrame)
             .then(frame => {
                 // On high-bitrate independent-frame streams the audio clock can
@@ -1464,14 +1462,16 @@ export class SplatStreamPlayer {
                 // upload. Showing the completed clock sample preserves visible
                 // progress; requiring exact equality can starve the display
                 // forever even though useful frames keep finishing.
-                if (this.playing && !this.destroyed) {
+                if (this.playing && !this.destroyed && generation === this.playbackGeneration) {
                     this.displayChronologically(frame);
                 } else {
                     this.trimCache();
                 }
             })
             .catch(error => {
-                if (!this.destroyed) console.error(`[SplatStream] Frame ${requestedFrame} failed:`, error);
+                if (!this.destroyed && this.playing && generation === this.playbackGeneration) {
+                    this.playback.fail(new Error(`Frame ${requestedFrame + 1} could not load. ${error instanceof Error ? error.message : String(error)}`));
+                }
             })
             .finally(() => {
                 this.foregroundLoad = null;
@@ -1567,8 +1567,9 @@ export class SplatStreamPlayer {
     destroy(): void {
         if (this.destroyed) return;
         this.destroyed = true;
-        this.pause();
+        this.playback.destroy();
         this.audio?.removeEventListener('ended', this.audioEndedHandler);
+        this.audio?.removeEventListener('error', this.audioErrorHandler);
         this.audio?.removeAttribute('src');
         this.audio?.load();
         this.app.off('update', this.updateHandler);

@@ -143,6 +143,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     if (!xrManager) throw new Error('PlayCanvas WebXR support is unavailable in this browser.');
     const xr = (navigator as Navigator & { xr?: XRSystem }).xr;
     let activeXrMode: ImmersiveXrMode | null = null;
+    let xrStarting = false;
     const xrDebug = {
         secureContext: window.isSecureContext,
         apiPresent: !!xr,
@@ -241,6 +242,39 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         }
     });
     let animationPlayer: SplatStreamPlayer | SplatVideoPlayer | null = null;
+    let animationReady = false;
+    let lastPlaybackState: string | null = null;
+    const refreshPlayback = (): void => {
+        if (!animationPlayer) return;
+        loadedSplats = animationPlayer.currentSplatCount;
+        const state = animationPlayer.playbackState;
+        if (!animationReady || state === lastPlaybackState) return;
+        lastPlaybackState = state;
+        ui.playback.textContent = state === 'starting' ? 'Cancel' : state === 'playing' ? 'Pause' : 'Play';
+        ui.playback.setAttribute('aria-busy', String(state === 'starting'));
+        if (state === 'starting' || state === 'playing') {
+            pauseBackgroundCache();
+            ui.headline.textContent = state === 'starting' ? 'Starting playback…' : 'Playing';
+            if (ui.notice.dataset.playbackError === 'true') {
+                ui.notice.textContent = '';
+                delete ui.notice.dataset.playbackError;
+            }
+        } else if (state === 'error') {
+            pauseBackgroundCache();
+            ui.headline.textContent = 'Playback stopped';
+            ui.notice.textContent = `${animationPlayer.playbackError} Press Play to try again.`;
+            ui.notice.dataset.level = 'error';
+            ui.notice.dataset.playbackError = 'true';
+        } else {
+            ui.headline.textContent = 'Paused';
+            resumeBackgroundCache();
+        }
+    };
+    const observePlaybackStart = (pending: Promise<void>): void => {
+        // The player owns errors and publishes them through refreshPlayback.
+        // Cancelled starts must not overwrite a newer session's status.
+        void pending.catch(() => undefined);
+    };
     const rendererName = (): string => {
         if (manifest.asset.encoding === 'gstex') return 'textured patches · CPU sort';
         switch (app.scene.gsplat.currentRenderer) {
@@ -294,33 +328,17 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             contentRoot,
             source: videoSource,
             audioUrl: query.get('audio'),
-            onStateChange: () => {
-                loadedSplats = player.currentSplatCount;
-                const playbackLabel = player.playing ? 'Pause' : 'Play';
-                if (ui.playback.textContent !== playbackLabel) {
-                    ui.playback.textContent = playbackLabel;
-                }
-            }
+            onStateChange: refreshPlayback
         });
         animationPlayer = player;
-        ui.playback.hidden = false;
-        ui.playback.textContent = 'Start';
-        ui.playback.addEventListener('click', async () => {
-            try {
-                await player.toggle();
-            } catch (error) {
-                ui.notice.textContent = `Playback could not start: ${error instanceof Error ? error.message : String(error)}`;
-                ui.notice.dataset.level = 'error';
-            }
-        });
-        // Meta Browser can leave a programmatic hidden-video play() pending
-        // even though the media is muted. Expose a trusted user gesture before
-        // awaiting frame zero so the page never deadlocks behind a hidden
-        // playback button.
-        await player.load(reportProgress);
-        loadedSplats = player.currentSplatCount;
-        ui.playback.textContent = player.playing ? 'Pause' : 'Play';
         window.addEventListener('beforeunload', () => player.destroy(), { once: true });
+        try {
+            await player.load(reportProgress);
+        } catch (error) {
+            player.destroy();
+            throw error;
+        }
+        loadedSplats = player.currentSplatCount;
     } else if (streamSource) {
         const source = streamSource;
         const player = new SplatStreamPlayer({
@@ -328,25 +346,27 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             contentRoot,
             source,
             audioUrl: query.get('audio'),
-            onStateChange: () => {
-                loadedSplats = player.currentSplatCount;
-                const playbackLabel = player.playing ? 'Pause' : 'Play';
-                if (ui.playback.textContent !== playbackLabel) {
-                    ui.playback.textContent = playbackLabel;
-                }
-            }
+            onStateChange: refreshPlayback
         });
         animationPlayer = player;
-        await player.load(reportProgress);
+        window.addEventListener('beforeunload', () => {
+            pauseBackgroundCache();
+            player.destroy();
+        }, { once: true });
+        try {
+            await player.load(reportProgress);
+        } catch (error) {
+            player.destroy();
+            throw error;
+        }
         loadedSplats = player.currentSplatCount;
-        ui.playback.hidden = false;
-        ui.playback.textContent = 'Play';
         let cacheController: AbortController | null = null;
         let cacheTask: Promise<void> | null = null;
         let cacheDisabled = false;
         const startBackgroundCache = (): void => {
             const cache = source.persistentCache;
-            if (!cache || cacheDisabled || cacheTask || player.playing || xrManager.active
+            if (!cache || cacheDisabled || cacheTask || player.playbackState !== 'paused' || xrManager.active || xrStarting
+                || document.visibilityState === 'hidden'
                 || cache.stats.cachedFrames >= cache.stats.frameCount) return;
             cacheController = new AbortController();
             const controller = cacheController;
@@ -357,11 +377,13 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
                 ui.progress.style.setProperty('--progress', `${percent}%`);
                 ui.detail.textContent = `${percent.toFixed(0)}% local · ${cachedFrames}/${frameCount} frames · ${(cachedBytes / 1073741824).toFixed(2)}/${(totalBytes / 1073741824).toFixed(2)} GB`;
             }, controller.signal).then(() => {
+                if (player.playbackState !== 'paused' || xrManager.active || xrStarting) return;
                 ui.notice.textContent = 'Local playback is ready. Splat frames will be read from Quest storage.';
                 ui.notice.dataset.level = 'ok';
             }).catch(error => {
                 if (!(error instanceof DOMException && error.name === 'AbortError')) {
                     cacheDisabled = true;
+                    if (player.playbackState === 'error') return;
                     ui.notice.textContent = `Quest storage could not hold the complete animation; continuing with streamed playback. ${error instanceof Error ? error.message : String(error)}`;
                     ui.notice.dataset.level = 'warning';
                 }
@@ -369,7 +391,8 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
                 if (cacheController === controller) cacheController = null;
                 cacheTask = null;
                 localCachePreparing = false;
-                ui.headline.textContent = 'Audio-synchronized stream ready';
+                if (player.playbackState === 'error' || player.playbackState === 'starting' || xrStarting) return;
+                ui.headline.textContent = player.playing ? 'Playing' : 'Ready';
                 const complete = cache.stats.cachedFrames >= cache.stats.frameCount;
                 ui.detail.textContent = complete
                     ? 'Animation cached on Quest storage; only two decoded frames stay in RAM.'
@@ -387,18 +410,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         };
         pauseBackgroundCache = stopBackgroundCache;
         resumeBackgroundCache = startBackgroundCache;
-        ui.playback.addEventListener('click', async () => {
-            const startingPlayback = !player.playing;
-            if (startingPlayback) stopBackgroundCache();
-            try {
-                await player.toggle();
-            } catch (error) {
-                ui.notice.textContent = `Audio playback could not start: ${error instanceof Error ? error.message : String(error)}`;
-                ui.notice.dataset.level = 'error';
-            } finally {
-                if (!player.playing) startBackgroundCache();
-            }
-        });
         if (source.persistentCache) {
             const stats = source.persistentCache.stats;
             if (stats.cachedFrames < stats.frameCount) {
@@ -409,10 +420,6 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         } else {
             staticDiagnostics.push(`Quest local cache: unavailable (${source.persistentCacheUnavailableReason || 'unknown'})`);
         }
-        window.addEventListener('beforeunload', () => {
-            stopBackgroundCache();
-            player.destroy();
-        }, { once: true });
     } else if (manifest.asset.encoding === 'gstex') {
         const textured = await loadTexturedSplat(app, camera, contentRoot, definition.assetUrl, reportProgress);
         loadedSplats = textured.count;
@@ -421,6 +428,12 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     } else {
         const splat = await loadSplat(app, contentRoot, definition.assetUrl, reportProgress);
         loadedSplats = splat.gsplat?.resource?.numSplats ?? 0;
+    }
+    if (animationPlayer) {
+        animationReady = true;
+        ui.playback.hidden = false;
+        refreshPlayback();
+        ui.playback.addEventListener('click', () => observePlaybackStart(animationPlayer!.toggle()));
     }
     refreshDiagnostics();
     ui.headline.textContent = localCachePreparing
@@ -431,7 +444,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     ui.detail.textContent = localCachePreparing
         ? ui.detail.textContent
         : isAnimated
-        ? (streamSource?.persistentCache?.stats.cachedFrames === streamSource?.persistentCache?.stats.frameCount
+        ? (streamSource?.persistentCache && streamSource.persistentCache.stats.cachedFrames === streamSource.persistentCache.stats.frameCount
             ? 'Animation cached on Quest storage; only two decoded frames stay in RAM.'
             : 'Only two decoded frames stay in RAM.')
         : (definition.authored
@@ -474,8 +487,10 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         const update = (button: HTMLButtonElement, mode: ImmersiveXrMode): void => {
             const name = modeName(mode);
             button.dataset.available = String(xrSupport[mode]);
-            button.disabled = activeXrMode !== null && activeXrMode !== mode;
-            button.textContent = activeXrMode === mode
+            button.disabled = xrStarting || (activeXrMode !== null && activeXrMode !== mode);
+            button.textContent = xrStarting && activeXrMode === mode
+                ? `Starting ${name}…`
+                : activeXrMode === mode
                 ? `Exit ${name}`
                 : `Enter ${name}`;
             button.title = xrSupport[mode]
@@ -515,10 +530,18 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     window.addEventListener('focus', refreshXrSupport);
     window.addEventListener('pageshow', refreshXrSupport);
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') void refreshXrSupport();
+        if (document.visibilityState === 'visible') {
+            void refreshXrSupport();
+            resumeBackgroundCache();
+        } else if (!xrManager.active && !xrStarting) {
+            if (animationPlayer?.playing || animationPlayer?.playbackState === 'starting') animationPlayer.pause();
+            pauseBackgroundCache();
+        }
     });
 
+    let cancelXrAlignment = (): void => undefined;
     xrManager.on('start', () => {
+        xrStarting = false;
         // Headsets rotate far more often than they translate. Radial ordering
         // stays correct while looking around, avoids a million-splat CPU sort
         // for every tiny orientation change, and is also the PlayCanvas mode
@@ -553,13 +576,18 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             applyMatrix(contentRoot, trackingFromContent);
             resetContent = trackingFromContent.clone();
             xrAlignmentPending = false;
-            ui.notice.textContent = `${activeXrMode ? modeName(activeXrMode) : 'XR'} aligned. Grip moves; while gripping, hold trigger and use that hand's stick up/down to scale.`;
-            ui.notice.dataset.level = 'ok';
+            if (animationPlayer?.playbackState !== 'error') {
+                ui.notice.textContent = `${activeXrMode ? modeName(activeXrMode) : 'XR'} aligned. Grip moves; while gripping, hold trigger and use that hand's stick up/down to scale.`;
+                ui.notice.dataset.level = 'ok';
+            }
         };
         app.on('update', alignFromFirstHeadPose);
+        cancelXrAlignment = () => app.off('update', alignFromFirstHeadPose);
     });
 
     xrManager.on('end', () => {
+        cancelXrAlignment();
+        xrStarting = false;
         const endedMode = activeXrMode ? modeName(activeXrMode) : 'XR';
         const averageFrameMs = xrFrameCount > 0 ? xrFrameTotalMs / xrFrameCount : 0;
         xrAlignmentPending = false;
@@ -577,18 +605,18 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         refreshXrSupport();
         resumeBackgroundCache();
         refreshDiagnostics();
-        if (xrFrameCount > 0) {
+        if (xrFrameCount > 0 && animationPlayer?.playbackState !== 'error') {
             ui.notice.textContent = `${endedMode} session: ${averageFrameMs.toFixed(1)} ms average, ${xrWorstFrameMs.toFixed(1)} ms worst frame across ${xrFrameCount.toLocaleString()} frames.`;
             ui.notice.dataset.level = averageFrameMs <= 13.9 ? 'ok' : 'warning';
         }
     });
 
-    const startXr = async (mode: ImmersiveXrMode): Promise<void> => {
+    const startXr = (mode: ImmersiveXrMode): void => {
+        if (xrStarting) return;
         if (xrManager.active) {
             xrManager.end();
             return;
         }
-        await refreshXrSupport();
         const name = modeName(mode);
         xrDebug.startAttempts++;
         xrDebug.lastStartError = null;
@@ -605,38 +633,41 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
             return;
         }
 
-        pauseBackgroundCache();
-        if (animationPlayer && !animationPlayer.playing) {
-            try {
-                await animationPlayer.play();
-            } catch (error) {
-                ui.notice.textContent = `XR can start, but source audio was blocked: ${error instanceof Error ? error.message : String(error)}`;
-                ui.notice.dataset.level = 'warning';
-            }
-        }
-
         // The XR runtime owns the camera pose. The content is aligned from its
         // first real head pose instead of applying a floor-height heuristic.
+        xrStarting = true;
         activeXrMode = mode;
+        pauseBackgroundCache();
         cameraComponent.clearColor = mode === 'immersive-ar' ? AR_CLEAR_COLOR : DESKTOP_CLEAR_COLOR;
         updateXrButtons();
         applyMatrix(camera, new Mat4());
-        xrManager.start(cameraComponent, mode, 'local', {
-            callback: (error?: Error | null) => {
-                if (error) {
-                    activeXrMode = null;
-                    cameraComponent.clearColor = DESKTOP_CLEAR_COLOR;
-                    applyMatrix(camera, authoredCamera);
-                    applyMatrix(contentRoot, authoredContent);
-                    updateXrButtons();
-                    xrDebug.activeMode = null;
-                    xrDebug.lastStartError = error.message;
-                    ui.notice.textContent = `Could not start ${name}: ${error.message}`;
-                    ui.notice.dataset.level = 'error';
-                    resumeBackgroundCache();
-                }
-            }
-        });
+        const startedPlayback = animationPlayer && animationPlayer.playbackState !== 'playing'
+            && animationPlayer.playbackState !== 'starting';
+        // Both privileged requests run in this click, with no capability probe
+        // or media promise between the gesture and the immersive request.
+        if (startedPlayback) observePlaybackStart(animationPlayer!.play());
+        const failed = (error: Error): void => {
+            xrStarting = false;
+            activeXrMode = null;
+            cancelXrAlignment();
+            if (startedPlayback) animationPlayer?.pause();
+            cameraComponent.clearColor = DESKTOP_CLEAR_COLOR;
+            applyMatrix(camera, authoredCamera);
+            applyMatrix(contentRoot, authoredContent);
+            updateXrButtons();
+            xrDebug.activeMode = null;
+            xrDebug.lastStartError = error.message;
+            ui.notice.textContent = `Could not start ${name}: ${error.message}`;
+            ui.notice.dataset.level = 'error';
+            resumeBackgroundCache();
+        };
+        try {
+            xrManager.start(cameraComponent, mode, 'local', {
+                callback: (error?: Error | null) => { if (error) failed(error); }
+            });
+        } catch (error) {
+            failed(error instanceof Error ? error : new Error(String(error)));
+        }
     };
 
     ui.ar.addEventListener('click', () => startXr('immersive-ar'));
