@@ -1,0 +1,350 @@
+{
+  "date": "2026-10-29",
+  "device": "Meta Quest 3",
+  "browser": "154.1.0.32.54.1101200317",
+  "chromium": "154.0.8037.126",
+  "engine": "2.21.3",
+  "conditions": "Off-head XR; 5 second warmup followed by approximately 17 seconds sampled. Motion is simulated camera translation, amplitude 5 cm.",
+  "cases": [
+    {
+      "source": "baseline-1793239448805.json",
+      "variant": "baseline",
+      "motion": false,
+      "sortsDuringMeasurement": null,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 318,
+        "frameMs": 52.19308176100746,
+        "p95Ms": 54,
+        "fps": 19.159627411521857,
+        "gpuMs": 45.12854299371056,
+        "passes": {
+          "GSplatIntervalCull": 0.01092266666666668,
+          "PrefixSumScan": 0.19825670440251641,
+          "GSplatIntervalScatter": 0.9861313207547135,
+          "GSplatIntervalWriteIndirectArgs": 0.015868779874213867,
+          "GSplatProjector": 2.577131069182391,
+          "GSplatProjectorWriteIndirectArgs": 0.02885232704402513,
+          "RadixSort4bit-Histogram-Indirect": 1.6550931320754754,
+          "PrefixSumAddBlock": 0.026585358490566053,
+          "RadixSort4bit-Reorder-Indirect": 9.95302238993711,
+          "Forward": 29.569719547169843
+        }
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      },
+      "errors": [],
+      "sortVerification": null
+    },
+    {
+      "source": "webgl-1793239410110.json",
+      "variant": "webgl",
+      "motion": false,
+      "sortsDuringMeasurement": null,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 509,
+        "frameMs": 32.634381139486266,
+        "p95Ms": 34.80000000074506,
+        "fps": 30.64252990506509,
+        "gpuMs": 0,
+        "passes": {}
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      },
+      "errors": [],
+      "sortVerification": null
+    },
+    {
+      "source": "static-subgroup2-triangle-1793239963437.json",
+      "variant": "static-subgroup2-triangle",
+      "motion": false,
+      "sortsDuringMeasurement": 0,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 615,
+        "frameMs": 26.9310569105685,
+        "p95Ms": 28.199999999254942,
+        "fps": 37.13185127938934,
+        "gpuMs": 22.79736361626012,
+        "passes": {
+          "Forward": 22.797043928455246
+        }
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      },
+      "errors": [],
+      "sortVerification": [
+        {
+          "count": 1,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 32,
+          "mismatch": -1
+        }
+      ]
+    },
+    {
+      "source": "static-subgroup2-triangle-motion-1793239746771.json",
+      "variant": "static-subgroup2-triangle",
+      "motion": true,
+      "sortsDuringMeasurement": 376,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 452,
+        "frameMs": 36.56570796460012,
+        "p95Ms": 40,
+        "fps": 27.348027856266775,
+        "gpuMs": 31.052609699115077,
+        "passes": {
+          "Forward": 22.77825472566369,
+          "QuestStaticSortKeys": 0.49557975221238576,
+          "RadixSort4bit-Histogram": 2.410332884955749,
+          "PrefixSumScan": 0.46455164601769644,
+          "PrefixSumAddBlock": 0.07017571681415914,
+          "RadixSort4bit-Reorder": 4.820085805309733
+        }
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      },
+      "errors": [],
+      "sortVerification": null
+    }
+  ],
+  "imageComparison": {
+    "width": 1680,
+    "height": 1760,
+    "splats": 1174066,
+    "repeat": {
+      "maxChannelDifference": 0,
+      "changedPixels": 0,
+      "pixelsOver4": 0,
+      "rmse": 0,
+      "psnr": null,
+      "meanReferenceBrightness": 107.92460497835498
+    },
+    "candidate": {
+      "maxChannelDifference": 4,
+      "changedPixels": 580829,
+      "pixelsOver4": 0,
+      "rmse": 0.3035251641174505,
+      "psnr": 58.486909556512074,
+      "meanReferenceBrightness": 107.92460497835498
+    }
+  },
+  "staticOrder": {
+    "initial": {
+      "count": 1174066,
+      "complete": true,
+      "stable": true
+    },
+    "translated": {
+      "count": 1174066,
+      "complete": true,
+      "stable": true
+    },
+    "modelTranslated": {
+      "count": 1174066,
+      "complete": true,
+      "stable": true
+    },
+    "stationaryReused": true,
+    "rotationReused": true,
+    "translationResorted": true,
+    "modelResorted": true,
+    "reusedSourcePositions": true
+  }
+}

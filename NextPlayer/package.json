@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c",
+    "build:quest-experiment": "node experiments/quest-static/build.mjs",
     "serve": "node server.cjs",
     "develop": "concurrently --kill-others \"npm run watch\" \"npm run serve\"",
     "type:check": "tsc --noEmit",

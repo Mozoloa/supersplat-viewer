@@ -1,6 +1,7 @@
 node_modules
 dist
 public
+NextPlayer/experimental-builds/
 .DS_Store
 .npmrc
 desktop.ini
