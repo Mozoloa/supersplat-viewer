@@ -1,0 +1,652 @@
+{
+  "date": "2026-10-30",
+  "device": "Meta Quest 3",
+  "browser": "154.1.0.32.54.1101200317",
+  "engine": "2.21.3",
+  "conditions": "Off-head immersive VR. Same authored view per scene, 1680x1760 per eye, 1/255 alpha, zero contribution culling and foveation. Five-second warmup and approximately 17 seconds sampled. Motion is simulated camera translation, amplitude 5 cm. Observed active GPU clock 545 MHz, thermal status 0; clocks were not overridden.",
+  "defaultVariant": "static-subgroup2-triangle",
+  "optionalVariant": "static-cov-subgroup2-triangle",
+  "cases": [
+    {
+      "scene": "original",
+      "source": "static-subgroup2-triangle-1793370366285.json",
+      "variant": "static-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 612,
+        "frameMs": 26.8031045751634,
+        "p95Ms": 28.099999994039536,
+        "fps": 37.30911086048709,
+        "gpuMs": 22.715077437908477,
+        "passes": {
+          "Forward": 22.68123858823529,
+          "QuestStaticSortKeys": 0.003105464052287582,
+          "RadixSort4bit-Histogram": 0.010708496732026142,
+          "PrefixSumScan": 0.0016062745098039213,
+          "PrefixSumAddBlock": 0,
+          "RadixSort4bit-Reorder": 0.017776104575163397
+        }
+      },
+      "sortsDuringMeasurement": 2,
+      "geometryCache": null,
+      "activeOptimizations": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      }
+    },
+    {
+      "scene": "original",
+      "source": "static-subgroup2-triangle-1793371214198.json",
+      "variant": "static-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 605,
+        "frameMs": 27.43123966943134,
+        "p95Ms": 29.099999994039536,
+        "fps": 36.45478702569808,
+        "gpuMs": 23.170929824793387,
+        "passes": {
+          "Forward": 23.152298102479396,
+          "QuestStaticSortKeys": 0.0023831272727272727,
+          "RadixSort4bit-Histogram": 0.004007986776859504,
+          "PrefixSumScan": 0.0007582677685950412,
+          "PrefixSumAddBlock": 0.00010832396694214876,
+          "RadixSort4bit-Reorder": 0.010724072727272726
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "covarianceCache": false
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "original",
+      "source": "static-cov-subgroup2-triangle-1793371052397.json",
+      "variant": "static-cov-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 635,
+        "frameMs": 26.10929133854513,
+        "p95Ms": 27.400000005960464,
+        "fps": 38.300541636061205,
+        "gpuMs": 22.16179824881894,
+        "passes": {
+          "Forward": 22.145285240944887,
+          "QuestStaticSortKeys": 0.0008256503937007874,
+          "RadixSort4bit-Histogram": 0.006398790551181103,
+          "PrefixSumScan": 0.0006192377952755905,
+          "PrefixSumAddBlock": 0.00020641259842519685,
+          "RadixSort4bit-Reorder": 0.007946885039370079
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "earlyAlpha": false,
+        "covarianceCache": true
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "original",
+      "source": "static-cov-subgroup2-triangle-1793371149241.json",
+      "variant": "static-cov-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 628,
+        "frameMs": 26.398726114659173,
+        "p95Ms": 27.899999976158142,
+        "fps": 37.880615740950525,
+        "gpuMs": 22.324608815286663,
+        "passes": {
+          "Forward": 22.308016101910848,
+          "QuestStaticSortKeys": 0.0008348535031847134,
+          "RadixSort4bit-Histogram": 0.005217834394904459,
+          "PrefixSumScan": 0.0007304968152866241,
+          "PrefixSumAddBlock": 0.00010435668789808917,
+          "RadixSort4bit-Reorder": 0.009287745222929935
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "covarianceCache": true
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-subgroup2-triangle-1793370463316.json",
+      "variant": "static-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 301,
+        "frameMs": 55.10498338878353,
+        "p95Ms": 56.400000005960464,
+        "fps": 18.147179048121213,
+        "gpuMs": 50.90514243189372,
+        "passes": {
+          "Forward": 50.87270102325583,
+          "QuestStaticSortKeys": 0.0021772757475083055,
+          "RadixSort4bit-Histogram": 0.010886378737541528,
+          "PrefixSumScan": 0.0015240930232558137,
+          "PrefixSumAddBlock": 0.00021772757475083056,
+          "RadixSort4bit-Reorder": 0.01698275083056478
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "geometryCache": null,
+      "activeOptimizations": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-subgroup2-triangle-1793371541285.json",
+      "variant": "static-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 297,
+        "frameMs": 55.851851851851855,
+        "p95Ms": 58.599999994039536,
+        "fps": 17.90450928381963,
+        "gpuMs": 51.44465670033673,
+        "passes": {
+          "Forward": 51.44421538047137
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "covarianceCache": false
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-cov-subgroup2-triangle-1793371419367.json",
+      "variant": "static-cov-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 309,
+        "frameMs": 53.44401294494524,
+        "p95Ms": 55.099999994039536,
+        "fps": 18.711169781171538,
+        "gpuMs": 49.19781157281553,
+        "passes": {
+          "Forward": 49.197599482200665
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "geometryCache": {
+        "bytes": 37622656,
+        "rebuilds": 2
+      },
+      "activeOptimizations": {
+        "covarianceCache": true
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-subgroup2-triangle-motion-1793371480672.json",
+      "variant": "static-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": true,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 254,
+        "frameMs": 65.67283464557542,
+        "p95Ms": 69.30000001192093,
+        "fps": 15.226996145313686,
+        "gpuMs": 59.57609423622049,
+        "passes": {
+          "Forward": 50.342226645669285,
+          "QuestStaticSortKeys": 0.6618103937007882,
+          "RadixSort4bit-Histogram": 2.636662929133861,
+          "PrefixSumScan": 0.5121612598425196,
+          "PrefixSumAddBlock": 0.07069631496063002,
+          "RadixSort4bit-Reorder": 5.338603842519681
+        }
+      },
+      "sortsDuringMeasurement": 224,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "covarianceCache": false
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-cov-subgroup2-triangle-motion-1793370987080.json",
+      "variant": "static-cov-subgroup2-triangle",
+      "mode": "immersive-vr",
+      "motion": true,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 259,
+        "frameMs": 63.772586872563856,
+        "p95Ms": 67.2999999821186,
+        "fps": 15.68071877024983,
+        "gpuMs": 58.211656154440135,
+        "passes": {
+          "Forward": 49.19197949034753,
+          "QuestStaticSortKeys": 0.5637614208494216,
+          "RadixSort4bit-Histogram": 2.700386841698843,
+          "PrefixSumScan": 0.4827903011583008,
+          "PrefixSumAddBlock": 0.07287400772200785,
+          "RadixSort4bit-Reorder": 5.185947181467181
+        }
+      },
+      "sortsDuringMeasurement": 230,
+      "geometryCache": null,
+      "activeOptimizations": {
+        "earlyAlpha": false,
+        "covarianceCache": true
+      },
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "webgl-1793370636392.json",
+      "variant": "webgl",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 222,
+        "frameMs": 59.81216216208161,
+        "p95Ms": 62.099999994039536,
+        "fps": 16.71900770432201,
+        "gpuMs": 0,
+        "passes": {}
+      },
+      "sortsDuringMeasurement": null,
+      "geometryCache": null,
+      "activeOptimizations": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      }
+    },
+    {
+      "scene": "denser",
+      "source": "static-subgroup2-1793370612717.json",
+      "variant": "static-subgroup2",
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 237,
+        "frameMs": 69.78987341767122,
+        "p95Ms": 71.59999999403954,
+        "fps": 14.328726375749437,
+        "gpuMs": 65.28851172995773,
+        "passes": {
+          "Forward": 65.28740563713075
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "geometryCache": null,
+      "activeOptimizations": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true
+      }
+    }
+  ],
+  "validations": {
+    "originalGeometry": {
+      "stationaryReused": true,
+      "cameraReused": true,
+      "modelRebuilt": true,
+      "customPreserved": true,
+      "cacheBytes": 37570112,
+      "changedModelImage": {
+        "mode": "static-shader",
+        "width": 1680,
+        "height": 1760,
+        "splats": 1174066,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.28020202020203
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.28020202020203
+        }
+      }
+    },
+    "denserGeometry": {
+      "stationaryReused": true,
+      "cameraReused": true,
+      "modelRebuilt": true,
+      "customPreserved": true,
+      "cacheBytes": 37622656,
+      "changedModelImage": {
+        "mode": "static-shader",
+        "width": 1680,
+        "height": 1760,
+        "splats": 1175708,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 62.45959889069264
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 62.45959889069264
+        }
+      }
+    },
+    "denserOrder": {
+      "initial": {
+        "count": 1175708,
+        "complete": true,
+        "stable": true
+      },
+      "translated": {
+        "count": 1175708,
+        "complete": true,
+        "stable": true
+      },
+      "modelTranslated": {
+        "count": 1175708,
+        "complete": true,
+        "stable": true
+      },
+      "stationaryReused": true,
+      "rotationReused": true,
+      "translationResorted": true,
+      "modelResorted": true,
+      "reusedSourcePositions": true
+    }
+  },
+  "rejectedExperiments": [
+    {
+      "variant": "early opacity rejection",
+      "reason": "No measured improvement on the denser scene (55.22 ms versus 55.10 ms reference). Removed."
+    },
+    {
+      "variant": "flat color and linear UV interpolation",
+      "reason": "No measured improvement (56.21 ms). Adding it to covariance caching did not improve that path. Removed."
+    },
+    {
+      "variant": "initial covariance branch",
+      "reason": "The engine preprocessor does not support bare !MACRO. Compiled shader inspection showed the cache was not read. Those timings and image comparisons are excluded; the condition and runner were corrected."
+    }
+  ],
+  "browserFailure": {
+    "time": "2026-10-30 15:33:15 device log time",
+    "signal": "SIGSEGV",
+    "thread": "VrShellGL.OVRMo",
+    "process": "com.oculus.browser",
+    "context": "A motion test did not finish and yielded no accepted timing. Native browser restarted, was brought to foreground remotely, and subsequent immersive runs including motion succeeded. Cause not established; not counted as a successful or error-free run."
+  },
+  "unattendedControl": {
+    "adbAuthorized": true,
+    "offHeadStayAwake": true,
+    "launchAndCleanRestartVerified": true,
+    "physicalRequirement": "Connected USB/power, cameras uncovered and facing a lit room so tracking remains available."
+  }
+}

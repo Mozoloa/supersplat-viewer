@@ -8,6 +8,7 @@ globalThis.__emsQuestVerifyStaticOrder = async () => {
     if (!manager) throw new Error('No static GPU renderer.');
     const r=manager.renderer, camera=manager.cameraNode, position=camera.getPosition().clone(), rotation=camera.getRotation().clone();
     const auto=app.autoRender;
+    const update=app.update;
     const params={...manager._fillRenderViewParams(),radialSorting:true};
     const state=manager.world.getState(manager.world.lastWorldStateVersion);
     const model=state.splats[0].node,modelPosition=model.getLocalPosition().clone();
@@ -29,6 +30,7 @@ globalThis.__emsQuestVerifyStaticOrder = async () => {
         return {count:r.count,complete:true,stable:true};
     };
     app.autoRender=false;
+    app.update=()=>{};
     try {
         prepare();const initial=await check();const before=r.sortRuns;
         prepare();const stationaryReused=r.sortRuns===before;
@@ -47,6 +49,6 @@ globalThis.__emsQuestVerifyStaticOrder = async () => {
     } finally {
         model.setLocalPosition(modelPosition);
         camera.setPosition(position);camera.setRotation(rotation);prepare();
-        app.autoRender=auto;app.renderNextFrame=true;
+        app.autoRender=auto;app.update=update;app.renderNextFrame=true;
     }
 };

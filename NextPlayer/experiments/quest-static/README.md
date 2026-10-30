@@ -31,6 +31,46 @@ Each run warms up for five seconds before sampling for approximately 17 seconds.
 GPU clocks were observed at 545 MHz; Android thermal status ranged from 0 to 1
 over the investigation. No clocks or thermal controls were overridden.
 
+## Follow-up on 30 October 2026
+
+The optional `static-cov-subgroup2-triangle` variant caches each splat's static
+covariance on the GPU. It uses the same baked data and half/f32 calculations as
+the vertex shader, storing six f32 values in two aligned vectors. Geometry
+revisions rebuild the cache; camera movement continues to project both eyes
+without rebuilding it. Custom shape shaders and 2DGS retain their original path.
+
+| Scene and motion | Existing static WebGPU | With covariance cache |
+| --- | ---: | ---: |
+| Original, stationary | 26.80–27.43 ms / 36.45–37.31 FPS | 26.11–26.40 ms / 37.88–38.30 FPS |
+| New denser scene, stationary | 55.10–55.85 ms / 17.90–18.15 FPS | 53.44 ms / 18.71 FPS |
+| New denser scene, simulated translation | 65.67 ms / 15.23 FPS | 63.77 ms / 15.68 FPS |
+
+The denser scene has 1,175,708 splats, almost the same count as the original, but
+its draw stage costs more than twice as much. Its WebGL reference measured
+59.81 ms / 16.72 FPS; returning to quads measured 69.79 ms / 14.33 FPS. The
+cache is a small additional gain, roughly 3–5% in these comparisons. It costs
+about **36 MiB** per scene and therefore remains **optional**, with the existing
+experimental default unchanged. All runs retain the quality settings above.
+
+Frozen image comparisons at 1680 × 1760 are pixel-identical with caching on/off,
+including after model scaling, on both scenes. Checks also cover cache reuse
+during camera movement, rebuilds after model changes, preservation of a custom
+corner shader, and all 1,175,708 sorted IDs in the denser scene. Comparison
+helpers freeze navigation updates as well as sort order: otherwise camera
+easing can change even consecutive reference images.
+
+Early opacity rejection and flat-color/linear-UV interpolation did not improve
+the measured workload and were removed. The runner now checks compiled shader
+code to ensure the requested optimization actually ran. An initial inactive
+cache branch was excluded from the evidence. Compact results and validation are
+in [measurements-20261030.json](measurements-20261030.json).
+
+One motion attempt hit a native Meta Browser SIGSEGV in `VrShellGL.OVRMo`. Its
+cause is unresolved; it yielded no accepted timing. The browser was recovered
+remotely, and later XR runs, including motion, completed without captured GPU
+or JavaScript errors. This experimental browser path is not yet a production
+reliability claim.
+
 ## What changed
 
 1. **Sort stable IDs when needed.** The static path keeps source centers and IDs
@@ -83,7 +123,7 @@ they never edit `node_modules` or production bundles.
   Broken shader runs and invalid timestamp queries were excluded.
 
 This remains a **static-scene, Quest-specific experiment**. Animation and custom
-vertex deformation are outside its validated scope. Results are from one scene;
+vertex deformation are outside its validated scope. Results now cover two scenes;
 large screen-filling splats can trade the triangle's reduced vertex work for more
 fragment work. Multi-scene and worn-headset assessment are needed before making
 it the general production default. WebGPU XR still requires the headset's enabled
@@ -105,6 +145,7 @@ node experiments/quest-static/run-quest.mjs TARGET_ID baseline 52888
 node experiments/quest-static/run-quest.mjs TARGET_ID webgl 52888
 node experiments/quest-static/run-quest.mjs TARGET_ID static-subgroup2-triangle 52888 --verify
 node experiments/quest-static/run-quest.mjs TARGET_ID static-subgroup2-triangle 52888 --motion
+node experiments/quest-static/run-quest.mjs TARGET_ID static-cov-subgroup2-triangle 52888
 ```
 
 After an experimental static run, invoke `__emsQuestVerifyImage()` and
@@ -112,6 +153,19 @@ After an experimental static run, invoke `__emsQuestVerifyImage()` and
 with `awaitPromise` and `returnByValue`. Both restore their temporary camera and
 renderer changes. Raw measurements are saved separately from the source;
 `measurements.json` keeps the compact final evidence without scene imagery.
+
+For the cache variant, also invoke `__emsQuestVerifyGeometry()`. The optional
+`--flat` runner flag is for nonimmersive diagnostics and labels its output
+accordingly; it must not be reported as an XR benchmark.
+
+The root `scripts/quest-browser.ps1` launcher supports `-Unattended -Restart`,
+`-DeviceSerial`, `-DebuggerPort`, `-ReversePort`, and `-Url`. Direct app launch,
+clean restart, and repeated XR start/end were verified off-head. Keep USB/power
+connected and the cameras facing a lit room. A lost-tracking Guardian dialog can
+block XR even while CDP remains responsive. After a clean browser restart, a
+temporary localhost session cookie may need restoring from the existing
+authenticated account session; never log its value. A stale native XR state
+required one clean restart, not additional browser feature flags.
 
 Research references: [WebSplatter](https://arxiv.org/html/2602.03207v1),
 [GPU sorting implementations and portability notes](https://github.com/b0nes164/GPUSorting),

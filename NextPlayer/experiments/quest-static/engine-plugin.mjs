@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 const subgroupReorder = readFileSync(new URL('./subgroup-reorder.wgsl', import.meta.url), 'utf8');
 const configId = '\0quest-static-config';
-export const variants = ['baseline', 'subgroup', 'subgroup2', 'subgroup2-triangle', 'static-subgroup2', 'static-subgroup2-triangle', 'cpu', 'webgl'];
+export const variants = ['baseline', 'subgroup', 'subgroup2', 'subgroup2-triangle', 'static-subgroup2', 'static-subgroup2-triangle', 'static-cov-subgroup2-triangle', 'cpu', 'webgl'];
 const configSource = `
 const variant = new URL(location.href).searchParams.get('experiment') || 'static-subgroup2-triangle';
 if (!${JSON.stringify(variants)}.includes(variant)) throw new Error('Unknown Quest experiment: '+variant);
@@ -12,7 +12,8 @@ export const rounds = variant.includes('subgroup2') ? 2 : 8;
 export const subgroup = variant.includes('subgroup');
 export const staticGpu = variant.startsWith('static-');
 export const triangles = variant.endsWith('-triangle');
-globalThis.__emsQuestExperiment = { variant, rounds, subgroup, triangles, staticGpu, engine: '2.21.3', production: false };
+export const covarianceCache = variant.includes('-cov-');
+globalThis.__emsQuestExperiment = { variant, rounds, subgroup, triangles, staticGpu, covarianceCache, engine: '2.21.3', production: false };
 `;
 
 function replaceOnce(code, from, to, label) {
@@ -31,6 +32,10 @@ export function questEngineExperiment() {
         transform(code, id) {
             id = id.replaceAll('\\', '/');
             if (!id.includes('/node_modules/playcanvas/')) return null;
+            if(id.endsWith('/gsplat-work-buffer.js')) {
+                code=replaceOnce(code,'this.renderPass.render();','this.renderPass.render();\n            this.questGeometryVersion = (this.questGeometryVersion || 0) + 1;','geometry revision');
+                return {code,map:null};
+            }
             if (id.endsWith('/scene/renderer/renderer.js')) {
                 // Match ForwardRenderer while waiting for the first XR views.
                 // An empty array otherwise skips binding the view uniform group.

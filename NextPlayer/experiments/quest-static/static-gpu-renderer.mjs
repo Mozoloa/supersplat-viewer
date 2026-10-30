@@ -7,6 +7,8 @@ import { StorageBuffer } from 'playcanvas/build/playcanvas/src/platform/graphics
 import { BindGroupFormat, BindStorageBufferFormat, BindUniformBufferFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/bind-group-format.js';
 import { UniformBufferFormat, UniformFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/uniform-buffer-format.js';
 import { BUFFERUSAGE_COPY_SRC, BUFFERUSAGE_COPY_DST, SHADERLANGUAGE_WGSL, SHADERSTAGE_COMPUTE, UNIFORMTYPE_VEC4, UNIFORMTYPE_UINT } from 'playcanvas/build/playcanvas/src/platform/graphics/constants.js';
+import { covarianceCache } from 'quest-static-config';
+import { StaticCovarianceCache, cachedCornerSource, uncachedCornerSource, permitsStaticGeometry } from './static-geometry.mjs';
 
 // Static-scene experiment: GPU-sort stable world IDs only when the camera's
 // sort parameters or the scene change. The normal vertex projection still runs
@@ -15,6 +17,7 @@ export class QuestStaticGpuRenderer extends GSplatQuadRenderer {
     constructor(...args) {
         super(...args);
         this.sorter = new ComputeRadixSort(this.device);
+        this.covarianceCache=covarianceCache ? new StaticCovarianceCache(this.device) : null;
         this.sourceState = null;
         this.sourceVersions = [];
         this.sourceUploads = 0;
@@ -67,6 +70,7 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
             for(let j=0;j<16;j++) if(matrix[j]!==this.modelMatrices[i*16+j]) { modelsChanged=true;break; }
         }
         if (changed) {
+            this.cacheCapacity=0;
             const positions = new Float32Array(count * 4);
             const ids = new Uint32Array(count);
             let cursor = 0;
@@ -85,6 +89,7 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
                         positions[cursor*4+2]=z;
                         positions[cursor*4+3]=modelIndex;
                         ids[cursor]=offset+i-begin;
+                        this.cacheCapacity=Math.max(this.cacheCapacity,ids[cursor]+1);
                     }
                     packedOffset += end-begin;
                 }
@@ -113,6 +118,10 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
             state.splats.forEach((s,i)=>this.modelMatrices.set(s.node.getWorldTransform().data,i*16));
             this.models.write(0,this.modelMatrices);
         }
+        if (this.covarianceCache && permitsStaticGeometry(params.material)) {
+            const cache=this.covarianceCache.update(world.workBuffer,this.ids,count,this.cacheCapacity,state.textureSize,changed);
+            this.material.setParameter('questCovariance',cache);
+        }
         const position = params.cameraNode.getPosition(), forward = params.cameraNode.forward;
         // Match the existing CPU sorter's 1 mm / 0.001 rad invalidation policy.
         const translated = Math.hypot(position.x-this.lastPosition[0],position.y-this.lastPosition[1],position.z-this.lastPosition[2]) > 0.001;
@@ -138,7 +147,20 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
         this.material.setParameter('splatTextureSize',state.textureSize);
         return true;
     }
+    frameUpdate(params) {
+        super.frameUpdate(params);
+        if (!covarianceCache) return;
+        const allowed=permitsStaticGeometry(params.material);
+        let dirty=false;
+        if(this.material.getDefine('QUEST_STATIC_COVARIANCE')!==allowed) {
+            this.material.setDefine('QUEST_STATIC_COVARIANCE',allowed);dirty=true;
+        }
+        const corner=allowed ? cachedCornerSource : (params.material.hasShaderChunks && params.material.shaderChunks.wgsl.get('gsplatCornerVS')) || uncachedCornerSource;
+        if(this.material.shaderChunks.wgsl.get('gsplatCornerVS')!==corner){this.material.shaderChunks.wgsl.set('gsplatCornerVS',corner);dirty=true;}
+        if(dirty)this.material.update();
+    }
     destroy() {
+        this.covarianceCache?.destroy();
         this.sorter.destroy(); this.keyCompute.destroy(); this.keyShader.destroy(); this.format.destroy();
         this.positions?.destroy(); this.keys?.destroy(); this.ids?.destroy(); this.models?.destroy();
         if (globalThis.__emsQuestStaticRenderer === this) delete globalThis.__emsQuestStaticRenderer;

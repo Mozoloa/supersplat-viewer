@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const [targetId, variant = 'baseline', port = '52888'] = process.argv.slice(2);
+const flat = process.argv.includes('--flat');
+if (flat && process.argv.includes('--motion')) throw new Error('--motion requires an immersive XR run.');
 if (!targetId) throw new Error('Usage: node experiments/quest-static/run-quest.mjs TARGET_ID VARIANT [PORT]');
 const directory = fileURLToPath(new URL('../../experimental-builds/quest-static/', import.meta.url));
 const pages = await fetch(`http://127.0.0.1:${port}/json/list`).then(r => r.json());
@@ -54,7 +56,7 @@ try {
         const {app}=await document.querySelector('pc-app').ready();
         const d=app.graphicsDevice;
         if (__emsQuestExperiment.variant === 'cpu') app.scene.gsplat.renderer=1;
-        const p=globalThis.__emsQuestProbe={app, rows:[], errors:[], eyes:{}, start:0, last:0};
+        const p=globalThis.__emsQuestProbe={app, rows:[], errors:[], eyes:{}, start:0, last:0, flat:${flat}};
         if (d.isWebGPU) {
         const pipelineGet=d.renderPipeline.get;
         d.renderPipeline.get=function(...args){d._questPipelineLabel=args[4]?.name || args[4]?.label;return pipelineGet.apply(this,args);};
@@ -66,9 +68,11 @@ try {
         window.addEventListener('unhandledrejection',e=>error(String(e.reason)));
         d.wgpu?.addEventListener('uncapturederror',e=>error(e.error.message));
         d.gpuProfiler.enabled=true;
-        const get=XRGPUBinding.prototype.getViewSubImage;
-        XRGPUBinding.prototype.getViewSubImage=function(l,v){const s=get.call(this,l,v);p.eyes[v.eye]=[s.viewport.width,s.viewport.height];return s;};
-        p.sample=()=>{if(!app.xr.active)return;const t=performance.now();if(!p.start)p.start=t;
+        if (!p.flat && typeof XRGPUBinding !== 'undefined') {
+            const get=XRGPUBinding.prototype.getViewSubImage;
+            XRGPUBinding.prototype.getViewSubImage=function(l,v){const s=get.call(this,l,v);p.eyes[v.eye]=[s.viewport.width,s.viewport.height];return s;};
+        }
+        p.sample=()=>{if(!p.flat&&!app.xr.active)return;const t=performance.now();if(!p.start)p.start=t;
             if(p.last&&t-p.start>5000&&p.rows.length<1200) {
                 p.sortStart ??= globalThis.__emsQuestStaticRenderer?.sortRuns;
                 p.rows.push({interval:t-p.last,gpu:d.gpuProfiler._frameTime,passes:Object.fromEntries(d.gpuProfiler.passTimings || [])});
@@ -83,19 +87,25 @@ try {
             c.setPosition(p.motionOrigin.x+0.05*Math.sin((performance.now()-p.start)/500),p.motionOrigin.y,p.motionOrigin.z);
         };p.app.on('update',p.motion);
     })()`);
-    await evaluate('document.querySelector("#enter-vr").click()', true);
+    if (!flat) await evaluate('document.querySelector("#enter-vr").click()', true);
     await delay(22000);
     const result = await evaluate(`(async()=>{
         const p=__emsQuestProbe,a=p.app;
-        if(!a.xr.active)throw new Error('XR session did not start: '+JSON.stringify(globalThis.__emsXrDebug));
-        if (!Object.keys(p.eyes).length) for (const v of a.root.findByName('camera').camera.camera.xrViews) p.eyes[v.eye || Object.keys(p.eyes).length]=[v.viewport.z,v.viewport.w];
+        if(!p.flat&&!a.xr.active)throw new Error('XR session did not start: '+JSON.stringify(globalThis.__emsXrDebug));
+        if (!p.flat&&!Object.keys(p.eyes).length) for (const v of a.root.findByName('camera').camera.camera.xrViews) p.eyes[v.eye || Object.keys(p.eyes).length]=[v.viewport.z,v.viewport.w];
+        const staticRenderer=globalThis.__emsQuestStaticRenderer;
+        const vertexCode=staticRenderer ? [...staticRenderer.material.variants.values()].map(s=>s.impl._vertexCode||'').join(' ') : '';
         const result={config:__emsQuestExperiment,eyes:p.eyes,rows:p.rows,errors:p.errors,backend:a.graphicsDevice.isWebGPU?'webgpu':'webgl2',
+            mode:p.flat?'flat':'immersive-vr',
+            activeOptimizations:{covarianceCache:vertexCode.includes('let a = questCovariance[')},
+            geometryCache:staticRenderer?.covarianceCache ? {bytes:staticRenderer.covarianceCache.output.byteSize,rebuilds:staticRenderer.covarianceCache.rebuilds} : null,
             motion:!!p.motion,sortsDuringMeasurement:globalThis.__emsQuestStaticRenderer ? __emsQuestStaticRenderer.sortRuns-p.sortStart : null,
             count:a.stats.frame.gsplats,quality:{alpha:a.scene.gsplat.alphaClipForward,contribution:a.scene.gsplat.minContribution,foveation:a.scene.gsplat.foveationStrength},
             adapter:{vendor:a.graphicsDevice.gpuAdapter?.info.vendor,architecture:a.graphicsDevice.gpuAdapter?.info.architecture},
             features:{minSubgroup:a.graphicsDevice.minSubgroupSize,maxSubgroup:a.graphicsDevice.maxSubgroupSize,f16:a.graphicsDevice.supportsShaderF16}};
-        a.off('frameend',p.sample);if(p.motion)a.off('update',p.motion);await a.xr.session.end();return result;
+        a.off('frameend',p.sample);if(p.motion)a.off('update',p.motion);if(a.xr.active)await a.xr.session.end();return result;
     })()`);
+    result.scene = url.searchParams.get('content');
     if (process.argv.includes('--verify')) {
         try { result.sortVerification = await evaluate('__emsQuestVerifySort()'); }
         catch (error) { result.sortVerificationError = error.message; process.exitCode = 1; }
@@ -112,11 +122,12 @@ try {
         validTimings: result.rows.every(r => Number.isFinite(r.interval) && r.interval > 0 && (result.backend !== 'webgpu' || Number.isFinite(r.gpu) && r.gpu > 0 && r.gpu < 1000)),
         errorFreeRun: result.errors.length === 0 && !result.sortVerificationError
     };
-    if (!result.validity.errorFreeRun || !result.validity.validTimings) process.exitCode = 1;
+    result.validity.expectedOptimizations = !result.config.covarianceCache || result.activeOptimizations.covarianceCache;
+    if (!result.validity.errorFreeRun || !result.validity.validTimings || !result.validity.expectedOptimizations) process.exitCode = 1;
     await mkdir(path.join(directory,'results'),{recursive:true});
-    const output=path.join(directory,'results',`${variant}${result.motion?'-motion':''}-${Date.now()}.json`);
+    const output=path.join(directory,'results',`${variant}${flat?'-flat':''}${result.motion?'-motion':''}-${Date.now()}.json`);
     await writeFile(output,JSON.stringify(result,null,2));
-    console.log(JSON.stringify({output,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError}));
+    console.log(JSON.stringify({output,mode:result.mode,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError}));
 } finally {
     await send('Fetch.disable').catch(()=>{});
     ws.close();
