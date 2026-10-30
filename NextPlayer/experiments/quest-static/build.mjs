@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { questEngineExperiment, variants } from './engine-plugin.mjs';
+import { nativeProbeSource } from '../quest-native/build-plugin.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const published = process.argv.includes('--publish');
@@ -18,7 +19,7 @@ const build = revision + (dirty ? '-dirty' : '');
 const output = published ? path.resolve(root, '../../webapp/public/next-player-experimental') : path.join(root, 'experimental-builds/quest-static');
 const bundle = await rollup({
     input: path.join(root, `experiments/quest-static/${published ? 'player-entry' : 'entry'}.mjs`),
-    plugins: [questEngineExperiment({build,published}), resolve(), typescript({ tsconfig: path.join(root, 'tsconfig.json'), sourceMap: false })]
+    plugins: [questEngineExperiment({build,published}), ...(published?[]:[nativeProbeSource()]), resolve(), typescript({ tsconfig: path.join(root, 'tsconfig.json'), sourceMap: false })]
 });
 await mkdir(path.join(output, 'schema'), { recursive: true });
 await bundle.write({ file: path.join(output, 'main.js'), format: 'esm', sourcemap: false });

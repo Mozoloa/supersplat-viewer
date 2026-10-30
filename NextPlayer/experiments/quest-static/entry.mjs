@@ -2,6 +2,7 @@ import './player-entry.mjs';
 import './verify-image.mjs';
 import './verify-static.mjs';
 import './verify-geometry.mjs';
+import '../quest-native/probe.mjs';
 import { StorageBuffer } from 'playcanvas/build/playcanvas/src/platform/graphics/storage-buffer.js';
 import { ComputeRadixSort } from 'playcanvas/build/playcanvas/src/scene/graphics/radix-sort/compute-radix-sort.js';
 import { BUFFERUSAGE_COPY_SRC, BUFFERUSAGE_COPY_DST } from 'playcanvas';

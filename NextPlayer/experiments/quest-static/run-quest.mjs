@@ -74,6 +74,9 @@ try {
     }
     if (!ready) throw new Error('Experimental player did not finish loading: '+JSON.stringify(await evaluate('({title:document.title,headline:document.querySelector("#headline")?.textContent,notice:document.querySelector("#notice")?.textContent})')));
     await send('Fetch.disable');
+    if(process.argv.includes('--load-only')) {
+        console.log(JSON.stringify({targetId,loaded:true,config:await evaluate('__emsQuestExperiment')}));
+    } else {
     await evaluate(`(async()=>{
         const {app}=await document.querySelector('pc-app').ready();
         const d=app.graphicsDevice;
@@ -170,6 +173,7 @@ try {
     const output=path.join(directory,'results',`${variant}${flat?'-flat':ar?'-ar':''}${result.motion?'-motion':''}-${Date.now()}.json`);
     await writeFile(output,JSON.stringify(result,null,2));
     console.log(JSON.stringify({output,mode:result.mode,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError,imageFile:result.imageFile}));
+    }
 } finally {
     await send('Fetch.disable').catch(()=>{});
     ws.close();

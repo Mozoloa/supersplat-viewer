@@ -1,0 +1,642 @@
+{
+  "date": "2026-10-30",
+  "device": "Meta Quest 3",
+  "browser": "154.1.0.32.54.1101200317",
+  "baseSource": "05b84443df6f",
+  "published": false,
+  "scope": "Frozen one-view GPU-stage comparisons. Captured Quest projection and eye offset, restored desktop scene state after XR exit. Not live stereo XR frame times, FPS, or a deployed improvement.",
+  "control": "32-bit ordering, support=1, 1680x1760, minPixelSize2, alpha1/255. The control differs from the published 24-bit/support0.8 default.",
+  "timing": "Candidate mean of eight GPU timestamp frames after one warmup; reference is last matching engine Forward GPU timestamp. No confidence interval or total-frame speedup claim.",
+  "cases": [
+    {
+      "source": "native-1793385183419.json",
+      "width": 1680,
+      "height": 1760,
+      "count": 1174066,
+      "reference": {
+        "mode": "combined",
+        "width": 1680,
+        "height": 1760,
+        "sortOffset": [
+          0,
+          0,
+          0
+        ],
+        "splats": 1174066,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 7.708668718434343,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 7.708668718434343,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        }
+      },
+      "referencePasses": {
+        "Forward": 7.929856
+      },
+      "configuration": {
+        "view": [
+          1,
+          -1.4564346950685092e-10,
+          1.0698245674761742e-12,
+          0,
+          1.4564346950685092e-10,
+          1,
+          -1.8508582166898435e-10,
+          0,
+          -1.0698245674761742e-12,
+          1.8508582166898435e-10,
+          1,
+          0,
+          0.032344505190849304,
+          2.4401982656740984e-9,
+          -2.1427811702778854e-7,
+          1
+        ],
+        "projection": [
+          0.9027383923530579,
+          0,
+          0,
+          0,
+          0,
+          0.8354789614677429,
+          0,
+          0,
+          -0.2425125688314438,
+          -0.19318747520446777,
+          -1.0000100135803223,
+          -1,
+          0,
+          0,
+          -0.01000010035932064,
+          0
+        ],
+        "decodeGamma": 0,
+        "epsilon": 0.0009765625,
+        "minPixelSize": 2,
+        "alphaClip": 0.00392156862745098
+      },
+      "shaderParams": {
+        "toneMapping": 0,
+        "gamma": 1
+      },
+      "bufferBytes": 254338704,
+      "results": [
+        {
+          "mode": "fused",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "draw": 6.397952
+          },
+          "totalMs": 6.397952,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.116863142382956,
+            "psnr": 66.77725240745711,
+            "max": 5,
+            "pixelsOver4": 1,
+            "alphaRmse": 0.017811087796225374,
+            "alphaMax": 2,
+            "visiblePixels": 223393,
+            "visibleRmse": 0.42516132771990234
+          }
+        },
+        {
+          "mode": "tiled",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "mapOrder": 0.311296,
+            "project": 7.479296,
+            "prefix": 1.818624,
+            "scatter": 5.521408000000001,
+            "sortTiles": 55.812096000000004,
+            "raster": 78.4384
+          },
+          "totalMs": 149.38112,
+          "pairCount": 2561018,
+          "maxTileCount": 2466,
+          "overflowTiles": 0,
+          "importance": [
+            {
+              "threshold": 0,
+              "count": 1039609
+            },
+            {
+              "threshold": 0.0001220703125,
+              "count": 1014741
+            },
+            {
+              "threshold": 0.000244140625,
+              "count": 1001157
+            },
+            {
+              "threshold": 0.00048828125,
+              "count": 983950
+            },
+            {
+              "threshold": 0.0009765625,
+              "count": 960968
+            },
+            {
+              "threshold": 0.001953125,
+              "count": 930643
+            },
+            {
+              "threshold": 0.00392156862745098,
+              "count": 890382
+            }
+          ],
+          "image": {
+            "rmse": 0.2836317899035072,
+            "psnr": 59.07570549552939,
+            "max": 12,
+            "pixelsOver4": 981,
+            "alphaRmse": 0.15082744361991204,
+            "alphaMax": 6,
+            "visiblePixels": 223394,
+            "visibleRmse": 1.031882217241967
+          }
+        },
+        {
+          "mode": "pruned",
+          "diagnostic": false,
+          "viewDependentOracle": true,
+          "ms": {
+            "draw": 5.406720000000001
+          },
+          "totalMs": 5.406720000000001,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.11948182449762551,
+            "psnr": 66.58476669475084,
+            "max": 5,
+            "pixelsOver4": 1,
+            "alphaRmse": 0.09559246503932395,
+            "alphaMax": 6,
+            "visiblePixels": 223393,
+            "visibleRmse": 0.43468838939261356
+          }
+        }
+      ],
+      "errors": [],
+      "eye": "left",
+      "scope": "Frozen offscreen GPU stage; captured eye projection is not a live XR frame benchmark"
+    },
+    {
+      "source": "native-1793385205932.json",
+      "width": 1680,
+      "height": 1760,
+      "count": 1175708,
+      "reference": {
+        "mode": "combined",
+        "width": 1680,
+        "height": 1760,
+        "sortOffset": [
+          0,
+          0,
+          0
+        ],
+        "splats": 1175708,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 35.33347222222222,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 35.33347222222222,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        }
+      },
+      "referencePasses": {
+        "Forward": 17.03936
+      },
+      "configuration": {
+        "view": [
+          1,
+          -1.538470739692599e-10,
+          6.615403754309246e-13,
+          0,
+          1.538470739692599e-10,
+          1,
+          -7.243736166451242e-10,
+          0,
+          -6.615402670107073e-13,
+          7.243736166451242e-10,
+          1,
+          0,
+          0.032344043254852295,
+          -1.2598952103815009e-8,
+          -3.5938931830514775e-8,
+          1
+        ],
+        "projection": [
+          0.9027383923530579,
+          0,
+          0,
+          0,
+          0,
+          0.8354789614677429,
+          0,
+          0,
+          -0.2425125688314438,
+          -0.19318747520446777,
+          -1.0000100135803223,
+          -1,
+          0,
+          0,
+          -0.01000010035932064,
+          0
+        ],
+        "decodeGamma": 0,
+        "epsilon": 0.0009765625,
+        "minPixelSize": 2,
+        "alphaClip": 0.00392156862745098
+      },
+      "shaderParams": {
+        "toneMapping": 0,
+        "gamma": 1
+      },
+      "bufferBytes": 254693376,
+      "results": [
+        {
+          "mode": "fused",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "draw": 14.917632000000001
+          },
+          "totalMs": 14.917632000000001,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.21238405078738853,
+            "psnr": 61.588365612383484,
+            "max": 3,
+            "pixelsOver4": 0,
+            "alphaRmse": 0.028531661990335157,
+            "alphaMax": 2,
+            "visiblePixels": 1829635,
+            "visibleRmse": 0.2699915064702847
+          }
+        },
+        {
+          "mode": "tiled",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "mapOrder": 0.679936,
+            "project": 8.732672,
+            "prefix": 1.6220160000000003,
+            "scatter": 9.199615999999999,
+            "sortTiles": 88.776704,
+            "raster": 161.66092799999998
+          },
+          "totalMs": 270.671872,
+          "pairCount": 6153625,
+          "maxTileCount": 1026,
+          "overflowTiles": 0,
+          "importance": [
+            {
+              "threshold": 0,
+              "count": 1128523
+            },
+            {
+              "threshold": 0.0001220703125,
+              "count": 1118908
+            },
+            {
+              "threshold": 0.000244140625,
+              "count": 1114063
+            },
+            {
+              "threshold": 0.00048828125,
+              "count": 1107376
+            },
+            {
+              "threshold": 0.0009765625,
+              "count": 1098019
+            },
+            {
+              "threshold": 0.001953125,
+              "count": 1084759
+            },
+            {
+              "threshold": 0.00392156862745098,
+              "count": 1066752
+            }
+          ],
+          "image": {
+            "rmse": 0.6643681629309955,
+            "psnr": 51.682627358097264,
+            "max": 8,
+            "pixelsOver4": 1458,
+            "alphaRmse": 0.3660466151446759,
+            "alphaMax": 8,
+            "visiblePixels": 1829637,
+            "visibleRmse": 0.8445732464826815
+          }
+        },
+        {
+          "mode": "pruned",
+          "diagnostic": false,
+          "viewDependentOracle": true,
+          "ms": {
+            "draw": 12.353535999999998
+          },
+          "totalMs": 12.353535999999998,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.21553959896720537,
+            "psnr": 61.46026219920111,
+            "max": 3,
+            "pixelsOver4": 0,
+            "alphaRmse": 0.16713341030394502,
+            "alphaMax": 4,
+            "visiblePixels": 1829635,
+            "visibleRmse": 0.274002981519251
+          }
+        }
+      ],
+      "errors": [],
+      "eye": "left",
+      "scope": "Frozen offscreen GPU stage; captured eye projection is not a live XR frame benchmark"
+    },
+    {
+      "source": "native-1793385268277.json",
+      "width": 1680,
+      "height": 1760,
+      "count": 1175708,
+      "reference": {
+        "mode": "combined",
+        "width": 1680,
+        "height": 1760,
+        "sortOffset": [
+          0,
+          0,
+          0
+        ],
+        "splats": 1175708,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 35.33347222222222,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 35.33347222222222,
+          "alphaRmse": 0,
+          "alphaMax": 0
+        }
+      },
+      "referencePasses": {
+        "Forward": 16.777216
+      },
+      "configuration": {
+        "view": [
+          1,
+          -1.538470739692599e-10,
+          6.615403754309246e-13,
+          0,
+          1.538470739692599e-10,
+          1,
+          -7.243736166451242e-10,
+          0,
+          -6.615402670107073e-13,
+          7.243736166451242e-10,
+          1,
+          0,
+          0.032344043254852295,
+          -1.2598952103815009e-8,
+          -3.5938931830514775e-8,
+          1
+        ],
+        "projection": [
+          0.9027383923530579,
+          0,
+          0,
+          0,
+          0,
+          0.8354789614677429,
+          0,
+          0,
+          -0.2425125688314438,
+          -0.19318747520446777,
+          -1.0000100135803223,
+          -1,
+          0,
+          0,
+          -0.01000010035932064,
+          0
+        ],
+        "decodeGamma": 0,
+        "epsilon": 0.0009765625,
+        "minPixelSize": 2,
+        "alphaClip": 0.00392156862745098
+      },
+      "shaderParams": {
+        "toneMapping": 0,
+        "gamma": 1
+      },
+      "bufferBytes": 254693376,
+      "results": [
+        {
+          "mode": "draw",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "project": 6.856704000000001,
+            "draw": 14.663680000000001
+          },
+          "totalMs": 21.520384,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.21238405078738853,
+            "psnr": 61.588365612383484,
+            "max": 3,
+            "pixelsOver4": 0,
+            "alphaRmse": 0.028531661990335157,
+            "alphaMax": 2,
+            "visiblePixels": 1829635,
+            "visibleRmse": 0.2699915064702847
+          }
+        },
+        {
+          "mode": "fused",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "draw": 14.680064
+          },
+          "totalMs": 14.680064,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 0.21238405078738853,
+            "psnr": 61.588365612383484,
+            "max": 3,
+            "pixelsOver4": 0,
+            "alphaRmse": 0.028531661990335157,
+            "alphaMax": 2,
+            "visiblePixels": 1829635,
+            "visibleRmse": 0.2699915064702847
+          }
+        },
+        {
+          "mode": "occlusion",
+          "diagnostic": false,
+          "viewDependentOracle": false,
+          "ms": {
+            "front0": 3.096576,
+            "occlusion1": 0.180224,
+            "front2": 2.244608,
+            "occlusion3": 0.17203200000000002,
+            "front4": 1.7121279999999999,
+            "occlusion5": 0.180224,
+            "front6": 1.277952,
+            "occlusion7": 0.18841599999999997,
+            "front8": 1.482752,
+            "occlusion9": 0.18841599999999997,
+            "front10": 2.187264,
+            "occlusion11": 0.6635520000000003,
+            "front12": 1.5155200000000002,
+            "occlusion13": 0.516096,
+            "front14": 1.277952
+          },
+          "totalMs": 16.883712000000003,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 1.4180631565558852,
+            "psnr": 45.09689213795941,
+            "max": 15,
+            "pixelsOver4": 75668,
+            "alphaRmse": 0.3652715366060507,
+            "alphaMax": 8,
+            "visiblePixels": 1829635,
+            "visibleRmse": 1.8027035184576488
+          }
+        },
+        {
+          "mode": "depth-reject",
+          "diagnostic": true,
+          "viewDependentOracle": false,
+          "ms": {
+            "reject": 7.995392000000002
+          },
+          "totalMs": 7.995392000000002,
+          "pairCount": 0,
+          "maxTileCount": 0,
+          "overflowTiles": 0,
+          "image": {
+            "rmse": 58.05781849285547,
+            "psnr": 12.853589342635912,
+            "max": 254,
+            "pixelsOver4": 1766346,
+            "alphaRmse": 196.2401977700972,
+            "alphaMax": 255,
+            "visiblePixels": 1829632,
+            "visibleRmse": 73.80568461590369
+          }
+        }
+      ],
+      "errors": [],
+      "eye": "left",
+      "scope": "Frozen offscreen GPU stage; captured eye projection is not a live XR frame benchmark"
+    }
+  ],
+  "authoredComparison": {
+    "source": "native-1793384143171.json",
+    "reference": {
+      "Forward": 21.823487999999998
+    },
+    "results": [
+      {
+        "mode": "fused",
+        "ms": {
+          "draw": 21.164851199999998
+        },
+        "totalMs": 21.164851199999998,
+        "pairCount": 0,
+        "maxTileCount": 0,
+        "overflowTiles": 0,
+        "image": {
+          "rmse": 0.2528784506882918,
+          "psnr": 60.072567167770465,
+          "max": 4,
+          "pixelsOver4": 0,
+          "alphaRmse": 0.02033771952549832,
+          "alphaMax": 1,
+          "visiblePixels": 2956077,
+          "visibleRmse": 0.2529093734183093
+        }
+      }
+    ]
+  },
+  "excluded": [
+    {
+      "source": "native-1793383437577.json",
+      "reason": "Invalid static import shader: missing uniforms name, therefore empty native data."
+    },
+    {
+      "source": "native-1793383577605.json",
+      "reason": "Used desktop aspect after restoring the reference target, so camera projection did not match."
+    },
+    {
+      "source": "native-1793384922209.json",
+      "reason": "Original 16x16/2048-entry tile lists overflowed; tiled and dependent pruned result invalid. Complete 8x8/4096-entry runs replace these."
+    }
+  ],
+  "limits": [
+    "No live XR integration or deployment of this core.",
+    "No general support for animation, custom materials, multiple source intervals or non-unit exposure.",
+    "Pruned uses a same-pose oracle that costs 149-271 ms to construct; it is not a runtime gain and must not be reused after head movement.",
+    "depth-reject intentionally produces an empty image; timing is diagnostic only.",
+    "No twofold performance gain demonstrated."
+  ]
+}
