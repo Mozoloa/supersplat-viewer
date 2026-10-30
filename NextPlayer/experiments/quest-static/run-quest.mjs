@@ -4,16 +4,20 @@ import path from 'node:path';
 
 const [targetId, variant = 'baseline', port = '52888'] = process.argv.slice(2);
 const flat = process.argv.includes('--flat');
+const ar = process.argv.includes('--ar');
+if (flat && ar) throw new Error('--ar requires an immersive XR run.');
 if (flat && process.argv.includes('--motion')) throw new Error('--motion requires an immersive XR run.');
 if (!targetId) throw new Error('Usage: node experiments/quest-static/run-quest.mjs TARGET_ID VARIANT [PORT]');
 const directory = fileURLToPath(new URL('../../experimental-builds/quest-static/', import.meta.url));
 const pages = await fetch(`http://127.0.0.1:${port}/json/list`).then(r => r.json());
 const page = pages.find(p => p.id === targetId);
-if (!page || !/^http:\/\/localhost:\d+\/next-player\//.test(page.url)) throw new Error('Select the explicitly opened local Quest test player.');
+if (!page) throw new Error('Quest test tab not found.');
 const url = new URL(page.url);
+if (!(url.protocol === 'https:' && url.pathname === '/next-player-experimental/index.html' && url.searchParams.get('quest-benchmark') === '1')) throw new Error('Select an explicitly opened HTTPS Quest benchmark tab.');
 url.searchParams.set('backend', variant === 'webgl' ? 'webgl2' : 'webgpu');
 url.searchParams.set('experiment', variant);
-const body = (await readFile(path.join(directory, 'main.js'))).toString('base64');
+const bundleArg = process.argv.indexOf('--bundle');
+const body = (await readFile(bundleArg >= 0 ? process.argv[bundleArg+1] : path.join(directory, 'main.js'))).toString('base64');
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { ws.addEventListener('open', resolve, { once: true }); ws.addEventListener('error', reject, { once: true }); });
 const pending = new Map(); let nextId = 0;
@@ -31,6 +35,11 @@ ws.addEventListener('message', event => {
         send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/javascript' }, { name: 'Cache-Control', value: 'no-store' }], body })
             .then(() => { served = true; }).catch(error => { console.error(error.message); ws.close(); });
     }
+    if (m.method === 'Security.certificateError') {
+        // The selected LAN test origin uses AppServices' private CA.
+        const local = url.hostname === '192.168.1.35' && new URL(m.params.requestURL).origin === url.origin;
+        send('Security.handleCertificateError', {eventId:m.params.eventId, action:local?'continue':'cancel'}).catch(error=>console.error(error.message));
+    }
 });
 const evaluate = async (expression, gesture = false) => {
     const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: gesture });
@@ -39,9 +48,13 @@ const evaluate = async (expression, gesture = false) => {
 };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 try {
+    if (url.hostname === '192.168.1.35') {
+        await send('Security.enable');
+        await send('Security.setOverrideCertificateErrors', {override:true});
+    }
     await send('Page.bringToFront');
     await evaluate('(async()=>{const e=document.querySelector("pc-app");if(e?.ready){const {app}=await e.ready();if(app.xr.active)await app.xr.session.end();}})()');
-    await send('Fetch.enable', { patterns: [{ urlPattern: `${url.origin}/next-player/main.js*`, requestStage: 'Request' }] });
+    await send('Fetch.enable', { patterns: [{ urlPattern: new URL('main.js*', url).href, requestStage: 'Request' }] });
     await send('Page.navigate', { url: url.href });
     let ready = false;
     const deadline = Date.now() + 30000;
@@ -67,6 +80,12 @@ try {
         window.addEventListener('error',e=>error(e.message));
         window.addEventListener('unhandledrejection',e=>error(String(e.reason)));
         d.wgpu?.addEventListener('uncapturederror',e=>error(e.error.message));
+        if (${process.argv.includes('--standard')}) {
+            app.scene.gsplat.renderer=1;
+            await new Promise(resolve=>{app.once('frameend',resolve);app.renderNextFrame=true;});
+            __emsConfigureQuestExperiment({isWebGPU:false},true);
+            app.scene.gsplat.renderer=2;
+        }
         d.gpuProfiler.enabled=true;
         if (!p.flat && typeof XRGPUBinding !== 'undefined') {
             const get=XRGPUBinding.prototype.getViewSubImage;
@@ -87,7 +106,7 @@ try {
             c.setPosition(p.motionOrigin.x+0.05*Math.sin((performance.now()-p.start)/500),p.motionOrigin.y,p.motionOrigin.z);
         };p.app.on('update',p.motion);
     })()`);
-    if (!flat) await evaluate('document.querySelector("#enter-vr").click()', true);
+    if (!flat) await evaluate(`document.querySelector("#enter-${ar ? 'ar' : 'vr'}").click()`, true);
     await delay(22000);
     const result = await evaluate(`(async()=>{
         const p=__emsQuestProbe,a=p.app;
@@ -96,11 +115,11 @@ try {
         const staticRenderer=globalThis.__emsQuestStaticRenderer;
         const vertexCode=staticRenderer ? [...staticRenderer.material.variants.values()].map(s=>s.impl._vertexCode||'').join(' ') : '';
         const result={config:__emsQuestExperiment,eyes:p.eyes,rows:p.rows,errors:p.errors,backend:a.graphicsDevice.isWebGPU?'webgpu':'webgl2',
-            mode:p.flat?'flat':'immersive-vr',
+            mode:p.flat?'flat':'immersive-${ar ? 'ar' : 'vr'}',capabilitySimulation:${process.argv.includes('--standard')},
             activeOptimizations:{covarianceCache:vertexCode.includes('let a = questCovariance[')},
             geometryCache:staticRenderer?.covarianceCache ? {bytes:staticRenderer.covarianceCache.output.byteSize,rebuilds:staticRenderer.covarianceCache.rebuilds} : null,
             motion:!!p.motion,sortsDuringMeasurement:globalThis.__emsQuestStaticRenderer ? __emsQuestStaticRenderer.sortRuns-p.sortStart : null,
-            count:a.stats.frame.gsplats,quality:{alpha:a.scene.gsplat.alphaClipForward,contribution:a.scene.gsplat.minContribution,foveation:a.scene.gsplat.foveationStrength},
+            count:a.stats.frame.gsplats,quality:{alpha:a.scene.gsplat.alphaClipForward,contribution:a.scene.gsplat.minContribution,foveation:a.scene.gsplat.foveationStrength,minPixelSize:a.scene.gsplat.minPixelSize,antialias:a.scene.gsplat.antiAlias,samples:a.graphicsDevice.samples},
             adapter:{vendor:a.graphicsDevice.gpuAdapter?.info.vendor,architecture:a.graphicsDevice.gpuAdapter?.info.architecture},
             features:{minSubgroup:a.graphicsDevice.minSubgroupSize,maxSubgroup:a.graphicsDevice.maxSubgroupSize,f16:a.graphicsDevice.supportsShaderF16}};
         a.off('frameend',p.sample);if(p.motion)a.off('update',p.motion);if(a.xr.active)await a.xr.session.end();return result;
@@ -125,10 +144,11 @@ try {
     result.validity.expectedOptimizations = !result.config.covarianceCache || result.activeOptimizations.covarianceCache;
     if (!result.validity.errorFreeRun || !result.validity.validTimings || !result.validity.expectedOptimizations) process.exitCode = 1;
     await mkdir(path.join(directory,'results'),{recursive:true});
-    const output=path.join(directory,'results',`${variant}${flat?'-flat':''}${result.motion?'-motion':''}-${Date.now()}.json`);
+    const output=path.join(directory,'results',`${variant}${flat?'-flat':ar?'-ar':''}${result.motion?'-motion':''}-${Date.now()}.json`);
     await writeFile(output,JSON.stringify(result,null,2));
     console.log(JSON.stringify({output,mode:result.mode,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError}));
 } finally {
     await send('Fetch.disable').catch(()=>{});
+    if (url.hostname === '192.168.1.35') await send('Security.setOverrideCertificateErrors', {override:false}).catch(()=>{});
     ws.close();
 }

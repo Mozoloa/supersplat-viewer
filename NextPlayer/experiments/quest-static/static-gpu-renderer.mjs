@@ -7,7 +7,7 @@ import { StorageBuffer } from 'playcanvas/build/playcanvas/src/platform/graphics
 import { BindGroupFormat, BindStorageBufferFormat, BindUniformBufferFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/bind-group-format.js';
 import { UniformBufferFormat, UniformFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/uniform-buffer-format.js';
 import { BUFFERUSAGE_COPY_SRC, BUFFERUSAGE_COPY_DST, SHADERLANGUAGE_WGSL, SHADERSTAGE_COMPUTE, UNIFORMTYPE_VEC4, UNIFORMTYPE_UINT } from 'playcanvas/build/playcanvas/src/platform/graphics/constants.js';
-import { covarianceCache } from 'quest-static-config';
+import { covarianceCache, depthTest } from 'quest-static-config';
 import { StaticCovarianceCache, cachedCornerSource, uncachedCornerSource, permitsStaticGeometry } from './static-geometry.mjs';
 
 // Static-scene experiment: GPU-sort stable world IDs only when the camera's
@@ -16,6 +16,9 @@ import { StaticCovarianceCache, cachedCornerSource, uncachedCornerSource, permit
 export class QuestStaticGpuRenderer extends GSplatQuadRenderer {
     constructor(...args) {
         super(...args);
+        // This player loads sorted splats only; none writes depth. Every surviving
+        // fragment passes the cleared depth buffer, so avoid the redundant read.
+        this.material.depthTest = depthTest;
         this.sorter = new ComputeRadixSort(this.device);
         this.covarianceCache=covarianceCache ? new StaticCovarianceCache(this.device) : null;
         this.sourceState = null;

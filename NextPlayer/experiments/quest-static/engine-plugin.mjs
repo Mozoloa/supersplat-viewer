@@ -13,15 +13,21 @@ export let subgroup = variant.includes('subgroup');
 export let staticGpu = variant.startsWith('static-');
 export let triangles = variant.endsWith('-triangle');
 export let covarianceCache = variant.includes('-cov-');
-globalThis.__emsQuestExperiment = { variant, rounds, subgroup, triangles, staticGpu, covarianceCache, engine: '2.21.3', production: false };
+const requestedBatch = Number(new URL(location.href).searchParams.get('batch')) || 2048;
+if (![128,2048].includes(requestedBatch)) throw new Error('Invalid experimental batch size');
+export let batchSize = 128;
+export let depthTest = true;
+globalThis.__emsQuestExperiment = { variant, rounds, subgroup, triangles, staticGpu, covarianceCache, batchSize, depthTest, engine: '2.21.3', production: false };
 globalThis.__emsConfigureQuestExperiment = (device, staticScene) => {
     const supported = device.isWebGPU && device.supportsSubgroups && device.supportsSubgroupId && device.minSubgroupSize >= 64 && device.maxSubgroupSize <= 128;
     subgroup = subgroup && supported;
     staticGpu = staticGpu && supported && staticScene;
     triangles = triangles && supported && staticScene;
     covarianceCache = covarianceCache && staticGpu;
+    batchSize = staticGpu ? requestedBatch : 128;
+    depthTest = !staticGpu || new URL(location.href).searchParams.get('depth') === 'on';
     if (!subgroup) rounds = 8;
-    Object.assign(globalThis.__emsQuestExperiment, {rounds, subgroup, staticGpu, triangles, covarianceCache,
+    Object.assign(globalThis.__emsQuestExperiment, {rounds, subgroup, staticGpu, triangles, covarianceCache, batchSize, depthTest,
         reason: staticGpu ? 'Static GPU renderer' : !staticScene ? 'Standard renderer for this media type' : !supported ? 'Standard renderer for this GPU' : 'Comparison renderer'});
 };
 `;
@@ -60,6 +66,7 @@ export function questEngineExperiment({ build = 'development', published = false
                 return { code: `import { staticGpu as questStaticGpu } from 'quest-static-config';\nimport { QuestStaticGpuRenderer } from 'quest-static-renderer';\n${code}`, map: null };
             }
             if (id.endsWith('/gsplat-resource-base.js')) {
+                code = replaceOnce(code, 'static get instanceSize() {\n\t\treturn 128;', 'static get instanceSize() {\n\t\treturn questBatchSize;', 'instance batch size');
                 code = replaceOnce(code, '\tstatic createMesh(device) {', `\tstatic createMesh(device) {
         if (questTriangles) {
             // The unit Gaussian disk is inscribed in this triangle. Fragment
@@ -75,15 +82,22 @@ export function questEngineExperiment({ build = 'development', published = false
             mesh.setPositions(positions, 3); mesh.setIndices(indices); mesh.update();
             return mesh;
         }`, 'triangle geometry');
-                return { code: `import { triangles as questTriangles } from 'quest-static-config';\n${code}`, map: null };
+                return { code: `import { triangles as questTriangles, batchSize as questBatchSize } from 'quest-static-config';\n${code}`, map: null };
             }
             if (id.endsWith('/gsplat-projector.js')) {
-                code = replaceOnce(code, 'const INDEX_COUNT = 6 * GSplatResourceBase.instanceSize;', 'const INDEX_COUNT = (questTriangles ? 3 : 6) * GSplatResourceBase.instanceSize;', 'triangle draw count');
+                code = replaceOnce(code, 'const INDEX_COUNT = 6 * GSplatResourceBase.instanceSize;', '', 'static index count');
+                code = replaceOnce(code, 'compute.setParameter("indexCount", INDEX_COUNT);', 'compute.setParameter("indexCount", (questTriangles ? 3 : 6) * GSplatResourceBase.instanceSize);', 'runtime triangle draw count');
                 return { code: `import { triangles as questTriangles } from 'quest-static-config';\n${code}`, map: null };
             }
             if (id.endsWith('/compute-radix-sort-multipass.js')) {
-                code = replaceOnce(code, 'const ELEMENTS_PER_THREAD = 8;', 'const ELEMENTS_PER_THREAD = questRounds;', 'radix rounds');
+                code = replaceOnce(code, 'const ELEMENTS_PER_THREAD = 8;', '', 'static radix rounds');
+                code = replaceOnce(code, 'const ELEMENTS_PER_WORKGROUP = THREADS_PER_WORKGROUP * ELEMENTS_PER_THREAD;', '', 'static radix workgroup size');
+                code = code.replaceAll('ELEMENTS_PER_THREAD', 'this._questElementsPerThread').replaceAll('ELEMENTS_PER_WORKGROUP', 'this._questElementsPerWorkgroup');
+                code = code.replaceAll('{this._questElementsPerThread}', '{ELEMENTS_PER_THREAD}').replaceAll('{this._questElementsPerWorkgroup}', '{ELEMENTS_PER_WORKGROUP}');
+                code = replaceOnce(code, '\t\t\t\tradixSortReorderSource,', `\t\t\t\tquestSubgroup ? ${JSON.stringify(subgroupReorder)} : radixSortReorderSource,`, 'runtime subgroup shader');
                 code = replaceOnce(code, '\t\tsuper(device, indirect);', `\t\tsuper(device, indirect);
+        this._questElementsPerThread = questRounds;
+        this._questElementsPerWorkgroup = THREADS_PER_WORKGROUP * questRounds;
         if (questSubgroup && (!device.supportsSubgroups || !device.supportsSubgroupId || device.minSubgroupSize < 64 || device.maxSubgroupSize > 128)) {
             throw new Error('This Quest experiment requires 64/128-lane subgroups and subgroup_id. Select experiment=baseline on other GPUs.');
         }`, 'subgroup capability guard');
@@ -104,9 +118,7 @@ export function questEngineExperiment({ build = 'development', published = false
                 code = replaceOnce(code, 'let digit = select(16u, (k >> CURRENT_BIT) & 0xFu, is_valid);', 'let digit = (k >> CURRENT_BIT) & 0xFu;', 'reorder digit');
                 code = replaceOnce(code, '\t\tif (is_valid) {\n\t\t\tatomicOr(&digit_masks[digit * 8u + word_idx], 1u << bit_idx);\n\t\t}',
                     '\t\tatomicOr(&digit_masks[digit * 8u + word_idx], select(0u, 1u << bit_idx, is_valid));', 'reorder atomics');
-                code = code.replace('const radixSortReorderSource =', 'let radixSortReorderSource =');
-                code = replaceOnce(code, 'var compute_radix_sort_reorder_default = radixSortReorderSource;', `if (questSubgroup) radixSortReorderSource = ${JSON.stringify(subgroupReorder)};\nvar compute_radix_sort_reorder_default = radixSortReorderSource;`, 'subgroup reorder');
-                return { code: `import { subgroup as questSubgroup } from 'quest-static-config';\n${code}`, map: null };
+                return { code, map: null };
             }
             if (id.endsWith('/chunks/gsplat/vert/gsplatHybrid.js')) {
                 code = code.replace('export {', 'globalThis.__emsQuestRasterShaders = { baseline: gsplatHybrid_default, selected: gsplatHybrid_default };\nexport {');

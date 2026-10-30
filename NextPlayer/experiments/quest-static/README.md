@@ -84,6 +84,54 @@ reliability claim.
 
 ## What changed
 
+### Published default and further measurements, 30 October
+
+The existing NGTY **3D player** selector contains **Experimental**, and the
+account setting is saved on the server. Its static-scene launcher uses the normal
+HTTPS origin at `/next-player-experimental/`, with a visible experimental label
+and source revision. Streamed animation and textured splats keep their existing
+renderer path. Publication now rejects uncommitted NextPlayer source.
+
+Two additional changes reduce draw overhead: batches contain 2,048 splats instead
+of 128, and this splat-only player skips depth testing against an untouched clear
+buffer. All surviving splat fragments already passed that test; the scene has no
+opaque depth-writing meshes. This depth choice must not be copied into a mixed
+mesh/splat scene without restoring depth testing. `batch=128&depth=on` reproduces
+the previous draw state for comparison.
+
+| Scene / mode | Previous experiment | Updated experiment |
+| --- | ---: | ---: |
+| Original, VR stationary | 26.11–26.40 ms / 37.88–38.30 FPS | 24.81 ms / 40.31 FPS |
+| Dense, VR stationary | 53.44 ms / 18.71 FPS | 49.29 ms / 20.29 FPS |
+| Dense, VR simulated translation | 63.77 ms / 15.68 FPS | 58.65 ms / 17.05 FPS |
+| Dense, AR stationary | 68.43 ms / 14.61 FPS | 62.47 ms / 16.01 FPS |
+
+The original scene now exceeds 2× its original WebGPU result (19.16 FPS), but
+the dense scene does **not** meet a 2× target. Against its WebGL reference of
+16.72 FPS, the updated dense VR result is about 21% faster. These stationary and
+motion cases remain distinct; no worn-headset comfort claim is made.
+
+The new draw state is pixel-identical to the previous state in frozen 1680×1760
+comparisons on both scenes, including model translation/scaling. The capability
+fallback now selects radix shader source, dispatch sizing and index counts after
+capability detection, rather than capturing the requested configuration at module
+initialization. A forced standard-renderer run on Quest and all 24 sort permutation
+cases passed with zero captured GPU/JavaScript errors.
+
+The current official **PlayCanvas 2.23.3** package was also benchmarked separately,
+using the same authoritative NextPlayer entry point and no engine patches:
+66.04 ms / 15.14 FPS on the dense scene, versus 66.45 ms / 15.05 FPS for the
+standard 2.21.3 fallback. Its substantial renderer/CPU changes did not materially
+improve this GPU-heavy workload. The tested experimental release therefore keeps
+the pinned engine. Branchless fragment predication and smaller/larger batch
+experiments were slower and removed. A shader-compilation failure produced an
+invalid 90 FPS reading; it is explicitly excluded, not counted as a gain.
+
+Compact evidence and research findings are in
+[measurements-20261030-release.json](measurements-20261030-release.json).
+
+### Renderer changes
+
 1. **Sort stable IDs when needed.** The static path keeps source centers and IDs
    resident on the GPU. It reuses the order during rotation and sorts again after
    translation, scene changes, or object transforms. Both eyes still project and
@@ -136,8 +184,8 @@ they never edit `node_modules` or production bundles.
 This remains a **static-scene, Quest-specific experiment**. Animation and custom
 vertex deformation are outside its validated scope. Results now cover two scenes;
 large screen-filling splats can trade the triangle's reduced vertex work for more
-fragment work. Multi-scene and worn-headset assessment are needed before making
-it the general production default. WebGPU XR still requires the headset's enabled
+fragment work. More scenes and worn-headset assessment are needed before claiming
+general performance or production stability. WebGPU XR still requires the headset's enabled
 XR binding/layer flags in this browser installation.
 
 The unsuccessful 8-bit radix, packed-read, reordered projection-cache and cached
@@ -145,10 +193,12 @@ clip-radius variants were removed from the maintained code after measurement.
 
 ## Reproduce without changing the server
 
-Use the project's existing Quest launcher and an authenticated localhost test
-tab through the existing SSH/ADB tunnel. The runner requires its exact CDP target
-ID and refuses unrelated origins. It intercepts only that page's `main.js` response
-with the experimental bundle; server files remain unchanged.
+Use the project's existing Quest launcher and a separate authenticated HTTPS tab
+at `/next-player-experimental/index.html?quest-benchmark=1&content=...`.
+The runner requires that exact CDP target ID and benchmark marker. It intercepts
+only that page's `main.js`; the user's ordinary player tab and server remain
+unchanged. The AppServices LAN private-CA exception is limited to the selected
+origin and debugger session. No SSH tunnel, localhost URL or copied cookie is needed.
 
 ```sh
 npm run build:quest-experiment
@@ -157,6 +207,8 @@ node experiments/quest-static/run-quest.mjs TARGET_ID webgl 52888
 node experiments/quest-static/run-quest.mjs TARGET_ID static-subgroup2-triangle 52888 --verify
 node experiments/quest-static/run-quest.mjs TARGET_ID static-subgroup2-triangle 52888 --motion
 node experiments/quest-static/run-quest.mjs TARGET_ID static-cov-subgroup2-triangle 52888
+node experiments/quest-static/run-quest.mjs TARGET_ID static-cov-subgroup2-triangle 52888 --ar
+node experiments/quest-static/run-quest.mjs TARGET_ID static-cov-subgroup2-triangle 52888 --standard --verify
 ```
 
 After an experimental static run, invoke `__emsQuestVerifyImage()` and
@@ -169,13 +221,19 @@ For the cache variant, also invoke `__emsQuestVerifyGeometry()`. The optional
 `--flat` runner flag is for nonimmersive diagnostics and labels its output
 accordingly; it must not be reported as an XR benchmark.
 
+Use `__emsQuestVerifyImage(1680,1760,'draw-state')` to compare the current batches
+and depth state with 128-splat batches and enabled depth testing. To benchmark an
+unmodified engine release, unpack its official npm package into a research folder,
+run `node experiments/quest-static/build-stock.mjs PATH_TO_PACKAGE`, then pass
+`--bundle experimental-builds/quest-stock/main.js` to the runner with `baseline`.
+This does not change application dependencies or publish the comparison build.
+
 The root `scripts/quest-browser.ps1` launcher supports `-Unattended -Restart`,
 `-DeviceSerial`, `-DebuggerPort`, `-ReversePort`, and `-Url`. Direct app launch,
 clean restart, and repeated XR start/end were verified off-head. Keep USB/power
 connected and the cameras facing a lit room. A lost-tracking Guardian dialog can
-block XR even while CDP remains responsive. After a clean browser restart, a
-temporary localhost session cookie may need restoring from the existing
-authenticated account session; never log its value. A stale native XR state
+block XR even while CDP remains responsive. The normal HTTPS account session
+persists through browser restarts. A stale native XR state
 required one clean restart, not additional browser feature flags.
 
 Research references: [WebSplatter](https://arxiv.org/html/2602.03207v1),

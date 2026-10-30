@@ -1,0 +1,1427 @@
+{
+  "date": "2026-10-30",
+  "device": "Meta Quest 3",
+  "browser": "154.1.0.32.54.1101200317",
+  "conditions": "Off-head XR, five-second warmup, about 17 seconds measured; 1680x1760 per eye, unchanged 1/255 alpha, zero contribution culling/foveation. GPU observed 545 MHz, thermal status 0. No clock overrides.",
+  "sourceNote": "Measurements used the working changes based on bd07348fad10. Early build metadata did not mark dirty source; the publication command now rejects dirty NextPlayer source.",
+  "cases": [
+    {
+      "source": "baseline-1793374848354.json",
+      "scene": "dense",
+      "config": {
+        "variant": "stock",
+        "engine": "2.23.3",
+        "published": false,
+        "build": "stock-comparison",
+        "reason": "Stock engine comparison"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 250,
+        "frameMs": 66.044,
+        "p95Ms": 68,
+        "fps": 15.14142087093453,
+        "gpuMs": 58.97925427199995,
+        "passes": {
+          "GSplatIntervalCull": 0.014942208,
+          "PrefixSumScan": 0.21102592000000017,
+          "GSplatIntervalScatter": 1.0619453440000017,
+          "GSplatIntervalWriteIndirectArgs": 0.02123366399999999,
+          "GSplatProjector": 2.7278704639999978,
+          "GSplatProjectorWriteIndirectArgs": 0.022282239999999984,
+          "RadixSort4bit-Histogram-Indirect": 1.7159946239999995,
+          "PrefixSumAddBlock": 0.03434086399999995,
+          "RadixSort4bit-Reorder-Indirect": 10.544480255999998,
+          "Forward": 42.48698880000001
+        }
+      },
+      "sortsDuringMeasurement": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-branchless-subgroup2-triangle-1793373956761.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-branchless-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "branchless": true,
+        "batchSize": 2048,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 314,
+        "frameMs": 52.57770700638841,
+        "p95Ms": 54.19999998807907,
+        "fps": 19.019467697183824,
+        "gpuMs": 48.13660942675155,
+        "passes": {
+          "Forward": 48.136400713375814
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793373652433.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 311,
+        "frameMs": 53.257556270173126,
+        "p95Ms": 54.900000005960464,
+        "fps": 18.776678278797586,
+        "gpuMs": 48.74677257877814,
+        "passes": {
+          "Forward": 48.74571894533759
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793373913535.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "branchless": false,
+        "batchSize": 2048,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 322,
+        "frameMs": 51.196894409863845,
+        "p95Ms": 52.900000005960464,
+        "fps": 19.532434760482953,
+        "gpuMs": 46.88103513043477,
+        "passes": {
+          "Forward": 46.84745301863353,
+          "QuestStaticSortKeys": 0.002645863354037267,
+          "RadixSort4bit-Histogram": 0.007937590062111801,
+          "PrefixSumScan": 0.0014246956521739129,
+          "PrefixSumAddBlock": 0.000203527950310559,
+          "RadixSort4bit-Reorder": 0.02075985093167702
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "excludedReason": "Navigation in another browser tab during measurement; not used for final comparison"
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374001878.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "branchless": false,
+        "batchSize": 8192,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 319,
+        "frameMs": 51.85423197492163,
+        "p95Ms": 52.79999998211861,
+        "fps": 19.28482906628782,
+        "gpuMs": 47.66706517868344,
+        "passes": {
+          "Forward": 47.66685973667721
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374183328.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "branchless": false,
+        "batchSize": 32,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 249,
+        "frameMs": 66.51204819277109,
+        "p95Ms": 68.19999998807907,
+        "fps": 15.034870029888596,
+        "gpuMs": 62.276044594377545,
+        "passes": {
+          "Forward": 62.27578139759036
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374240341.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "branchless": false,
+        "batchSize": 2048,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 333,
+        "frameMs": 49.18648648646859,
+        "p95Ms": 51,
+        "fps": 20.330787405908822,
+        "gpuMs": 44.84709169969969,
+        "passes": {
+          "Forward": 44.81383168768768,
+          "QuestStaticSortKeys": 0.0015744384384384384,
+          "RadixSort4bit-Histogram": 0.012398702702702703,
+          "PrefixSumScan": 0.0013776336336336335,
+          "PrefixSumAddBlock": 0.0001968048048048048,
+          "RadixSort4bit-Reorder": 0.016334798798798796
+        }
+      },
+      "sortsDuringMeasurement": 1,
+      "validity": {
+        "diagnostic": true,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "excludedReason": "Diagnostic depth-test override; confirmed separately by the final source build and image comparisons."
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374566643.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 1200,
+        "frameMs": 11.142999999995032,
+        "p95Ms": 12.300000011920929,
+        "fps": 89.74243919953746,
+        "gpuMs": 5.039117653333335,
+        "passes": {
+          "Forward": 5.03889920000001
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 32,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": false,
+        "expectedOptimizations": true
+      },
+      "errors": [
+        {
+          "time": 1125.9000000059605,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.199999988079,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.199999988079,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.199999988079,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.4000000059605,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.4000000059605,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.4000000059605,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.5,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.5,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.5999999940395,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.5999999940395,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.699999988079,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.7999999821186,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.7999999821186,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.7999999821186,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.7999999821186,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.9000000059605,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1126.9000000059605,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1126.9000000059605,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.0999999940395,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1127.0999999940395,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.199999988079,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1127.199999988079,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.2999999821186,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1127.2999999821186,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.4000000059605,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1127.4000000059605,
+          "message": "Error while parsing WGSL: :23:34 error: missing initializer for 'const' declaration\nconst ELEMENTS_PER_THREAD: u32 = {ELEMENTS_PER_THREAD}u;\n                                 ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.4000000059605,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        },
+        {
+          "time": 1127.5,
+          "message": "Error while parsing WGSL: :23:21 error: missing initializer for 'const' declaration\nconst ROUNDS: u32 = {ELEMENTS_PER_THREAD}u;\n                    ^\n\n\n - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).\n"
+        },
+        {
+          "time": 1127.5,
+          "message": "[Invalid ShaderModule (unlabeled)] is invalid due to a previous error.\n - While validating compute stage ([Invalid ShaderModule (unlabeled)], entryPoint: \"main\").\n - While calling [Device].CreateComputePipeline([ComputePipelineDescriptor]).\n"
+        }
+      ],
+      "excludedReason": "GPU shader validation errors; timing excluded"
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374679889.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 335,
+        "frameMs": 49.28746268660275,
+        "p95Ms": 51.10000002384186,
+        "fps": 20.289135319433242,
+        "gpuMs": 44.831710376119354,
+        "passes": {
+          "Forward": 44.83131911641792
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "sortVerification": [
+        {
+          "count": 1,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 32,
+          "mismatch": -1
+        }
+      ]
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793374763892.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 8,
+        "subgroup": false,
+        "triangles": false,
+        "staticGpu": false,
+        "covarianceCache": false,
+        "batchSize": 128,
+        "depthTest": true,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Standard renderer for this GPU"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 249,
+        "frameMs": 66.44738955813717,
+        "p95Ms": 68.59999999403954,
+        "fps": 15.04950016320904,
+        "gpuMs": 59.167690538152534,
+        "passes": {
+          "GSplatIntervalCull": 0.01026467469879518,
+          "PrefixSumScan": 0.22292767871485997,
+          "GSplatIntervalScatter": 1.0456808353413696,
+          "GSplatIntervalWriteIndirectArgs": 0.025530088353413628,
+          "GSplatProjector": 2.6024898313253035,
+          "GSplatProjectorWriteIndirectArgs": 0.03184681124497989,
+          "RadixSort4bit-Histogram-Indirect": 1.7220965783132505,
+          "PrefixSumAddBlock": 0.027635662650602376,
+          "RadixSort4bit-Reorder-Indirect": 10.37179579116464,
+          "Forward": 42.98714165461844
+        }
+      },
+      "sortsDuringMeasurement": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "sortVerification": [
+        {
+          "count": 1,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 16,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 20,
+          "mismatch": -1
+        },
+        {
+          "count": 1,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 127,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 255,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 256,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 257,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2047,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 2049,
+          "bits": 32,
+          "mismatch": -1
+        },
+        {
+          "count": 200003,
+          "bits": 32,
+          "mismatch": -1
+        }
+      ]
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793375140062.json",
+      "scene": "original",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 662,
+        "frameMs": 24.80996978854665,
+        "p95Ms": 25.69999998807907,
+        "fps": 40.30637717510011,
+        "gpuMs": 20.774021027190308,
+        "passes": {
+          "Forward": 20.77352604229609
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-ar-1793373591536.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-ar",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 238,
+        "frameMs": 68.42815126052925,
+        "p95Ms": 69.90000000596046,
+        "fps": 14.61386843833702,
+        "gpuMs": 63.194602487394924,
+        "passes": {
+          "Forward": 63.19432712605036
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-ar-1793375056043.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-ar",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 261,
+        "frameMs": 62.46551724137931,
+        "p95Ms": 64.2000000178814,
+        "fps": 16.008832459287884,
+        "gpuMs": 57.48436254406138,
+        "passes": {
+          "Forward": 57.484111448275904
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-motion-1793374950560.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": true,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 280,
+        "frameMs": 58.651071428507564,
+        "p95Ms": 62.599999994039536,
+        "fps": 17.049986908064334,
+        "gpuMs": 53.04834925714284,
+        "passes": {
+          "Forward": 44.51626422857141,
+          "QuestStaticSortKeys": 0.53669302857143,
+          "RadixSort4bit-Histogram": 2.55122285714286,
+          "PrefixSumScan": 0.4376868571428575,
+          "PrefixSumAddBlock": 0.06740845714285722,
+          "RadixSort4bit-Reorder": 4.926434742857145
+        }
+      },
+      "sortsDuringMeasurement": 239,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "subgroup2-triangle-1793373622920.json",
+      "scene": "dense",
+      "config": {
+        "variant": "subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": false,
+        "covarianceCache": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Comparison renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0
+      },
+      "summary": {
+        "frames": 287,
+        "frameMs": 57.73588850180447,
+        "p95Ms": 59.70000001788139,
+        "fps": 17.32024960469338,
+        "gpuMs": 50.247844125435556,
+        "passes": {
+          "GSplatIntervalCull": 0.010047331010452961,
+          "PrefixSumScan": 0.3749481254355404,
+          "GSplatIntervalScatter": 0.9796147735191659,
+          "GSplatIntervalWriteIndirectArgs": 0.01575604181184667,
+          "GSplatProjector": 2.4593126132404173,
+          "GSplatProjectorWriteIndirectArgs": 0.022149797909407635,
+          "RadixSort4bit-Histogram-Indirect": 1.846653770034849,
+          "PrefixSumAddBlock": 0.05800050174216019,
+          "RadixSort4bit-Reorder-Indirect": 3.688740571428572,
+          "Forward": 40.64602090592331
+        }
+      },
+      "sortsDuringMeasurement": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-motion-1793375236324.json",
+      "scene": "original",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "bd07348fad10",
+        "published": false,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": true,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 481,
+        "frameMs": 34.26694386695626,
+        "p95Ms": 37.69999998807907,
+        "fps": 29.182643304362596,
+        "gpuMs": 28.809543850311826,
+        "passes": {
+          "Forward": 20.824915559251583,
+          "QuestStaticSortKeys": 0.4922693721413687,
+          "RadixSort4bit-Histogram": 2.3929496216216157,
+          "PrefixSumScan": 0.42291838669438847,
+          "PrefixSumAddBlock": 0.08134093970893955,
+          "RadixSort4bit-Reorder": 4.583296266112264
+        }
+      },
+      "sortsDuringMeasurement": 388,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    }
+  ],
+  "imageChecks": [
+    {
+      "scene": "dense",
+      "translated": {
+        "mode": "draw-state",
+        "width": 1680,
+        "height": 1760,
+        "splats": 1175708,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 62.330220057720055
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 62.330220057720055
+        }
+      }
+    },
+    {
+      "scene": "original",
+      "normal": {
+        "mode": "draw-state",
+        "width": 1680,
+        "height": 1760,
+        "splats": 1174066,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.92453463203464
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.92453463203464
+        }
+      },
+      "scaled": {
+        "mode": "draw-state",
+        "width": 1680,
+        "height": 1760,
+        "splats": 1174066,
+        "repeat": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.9272233495671
+        },
+        "candidate": {
+          "maxChannelDifference": 0,
+          "changedPixels": 0,
+          "pixelsOver4": 0,
+          "rmse": 0,
+          "psnr": null,
+          "meanReferenceBrightness": 107.9272233495671
+        }
+      }
+    }
+  ],
+  "research": [
+    {
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0",
+      "finding": "Official 2.23.3 package benchmarked unchanged using the same NextPlayer entry point; no material dense-scene speedup."
+    },
+    {
+      "url": "https://github.com/websplatter/WebSplatter",
+      "finding": "Inspected wait-free radix, opacity-aware bounds and raster shader. Current renderer already bounds by opacity; no imported approximation or alpha change."
+    },
+    {
+      "url": "https://grgkopanas.github.io/3dgs_cuda_blog/",
+      "finding": "Inspected primary article. CUDA backward/training optimizations do not directly apply to this viewer. Branchless forward alpha experiment was slower and removed."
+    }
+  ]
+}

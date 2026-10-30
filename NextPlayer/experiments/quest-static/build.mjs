@@ -10,7 +10,11 @@ import { questEngineExperiment, variants } from './engine-plugin.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const published = process.argv.includes('--publish');
-const build = process.env.EMS_PLAYER_REVISION || execFileSync('git', ['-c', `safe.directory=${path.resolve(root, '..').replaceAll('\\', '/')}`, 'rev-parse', '--short=12', 'HEAD'], {cwd:root,encoding:'utf8'}).trim();
+const gitOptions = ['-c', `safe.directory=${path.resolve(root, '..').replaceAll('\\', '/')}`];
+const revision = execFileSync('git', [...gitOptions, 'rev-parse', '--short=12', 'HEAD'], {cwd:root,encoding:'utf8'}).trim();
+const dirty = !!execFileSync('git', [...gitOptions, 'status', '--porcelain', '--', '.'], {cwd:root,encoding:'utf8'}).trim();
+if (published && dirty) throw new Error('Commit all NextPlayer source changes before publishing.');
+const build = revision + (dirty ? '-dirty' : '');
 const output = published ? path.resolve(root, '../../webapp/public/next-player-experimental') : path.join(root, 'experimental-builds/quest-static');
 const bundle = await rollup({
     input: path.join(root, `experiments/quest-static/${published ? 'player-entry' : 'entry'}.mjs`),
