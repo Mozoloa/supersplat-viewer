@@ -7,8 +7,21 @@ import { StorageBuffer } from 'playcanvas/build/playcanvas/src/platform/graphics
 import { BindGroupFormat, BindStorageBufferFormat, BindUniformBufferFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/bind-group-format.js';
 import { UniformBufferFormat, UniformFormat } from 'playcanvas/build/playcanvas/src/platform/graphics/uniform-buffer-format.js';
 import { BUFFERUSAGE_COPY_SRC, BUFFERUSAGE_COPY_DST, SHADERLANGUAGE_WGSL, SHADERSTAGE_COMPUTE, UNIFORMTYPE_VEC4, UNIFORMTYPE_UINT } from 'playcanvas/build/playcanvas/src/platform/graphics/constants.js';
-import { covarianceCache, depthTest } from 'quest-static-config';
+import { covarianceCache, depthTest, sortBits, support, sortDistance } from 'quest-static-config';
 import { StaticCovarianceCache, cachedCornerSource, uncachedCornerSource, permitsStaticGeometry } from './static-geometry.mjs';
+
+const capAnchor='let diagonalVector = normalize(vec2f(offDiagonal, lambda1 - diagonal1));';
+if(!cachedCornerSource.includes(capAnchor))throw new Error('Pinned Gaussian corner shader changed.');
+const cappedCornerSource='#ifdef QUEST_SMALL_CAPS\nuniform questSupport:f32;\n#endif\n'+cachedCornerSource.replace(capAnchor,`
+    #ifdef QUEST_SMALL_CAPS
+        // Trim low-weight triangle caps only on small projected splats. Restore
+        // the full footprint smoothly for larger splats and close inspection.
+        let extent=half(mix(uniform.questSupport,1.0,smoothstep(12.0,48.0,max(l1,l2))));
+        let questUV=source.cornerUV*extent;
+    #else
+        let questUV=source.cornerUV;
+    #endif
+    ${capAnchor}`).replace('f32(source.cornerUV.x) * v1 + f32(source.cornerUV.y) * v2','f32(questUV.x) * v1 + f32(questUV.y) * v2').replace('corner.uv = source.cornerUV;','corner.uv = questUV;');
 
 // Static-scene experiment: GPU-sort stable world IDs only when the camera's
 // sort parameters or the scene change. The normal vertex projection still runs
@@ -25,6 +38,8 @@ export class QuestStaticGpuRenderer extends GSplatQuadRenderer {
         this.sourceVersions = [];
         this.sourceUploads = 0;
         this.sortRuns = 0;
+        this.sortBits=sortBits;
+        this.material.setParameter('questSupport',support);
         this.lastPosition = [Infinity, Infinity, Infinity];
         this.lastDirection = [Infinity, Infinity, Infinity];
         this.origin = new Float32Array(4);
@@ -37,7 +52,7 @@ export class QuestStaticGpuRenderer extends GSplatQuadRenderer {
         ]);
         this.uniformFormat = new UniformBufferFormat(this.device, [
             new UniformFormat('questOrigin', UNIFORMTYPE_VEC4), new UniformFormat('questForward', UNIFORMTYPE_VEC4),
-            new UniformFormat('questLength', UNIFORMTYPE_UINT), new UniformFormat('questRadial', UNIFORMTYPE_UINT)
+            new UniformFormat('questLength', UNIFORMTYPE_UINT), new UniformFormat('questRadial', UNIFORMTYPE_UINT),new UniformFormat('questShift',UNIFORMTYPE_UINT)
         ]);
         this.keyShader = new Shader(this.device, { name: 'QuestStaticSortKeys', shaderLanguage: SHADERLANGUAGE_WGSL,
             computeBindGroupFormat: this.format, computeUniformBufferFormats: { uniforms: this.uniformFormat },
@@ -45,7 +60,7 @@ export class QuestStaticGpuRenderer extends GSplatQuadRenderer {
 @group(0) @binding(0) var<storage, read> questPositions: array<vec4f>;
 @group(0) @binding(1) var<storage, read_write> questKeys: array<u32>;
 @group(0) @binding(2) var<storage, read> questModels: array<mat4x4f>;
-struct Parameters { questOrigin: vec4f, questForward: vec4f, questLength: u32, questRadial: u32 };
+struct Parameters { questOrigin: vec4f, questForward: vec4f, questLength: u32, questRadial: u32, questShift:u32 };
 @group(0) @binding(3) var<uniform> uniforms: Parameters;
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) id: vec3u) {
@@ -56,7 +71,7 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
     let depth = select(dot(delta, uniforms.questForward.xyz), dot(delta, delta), uniforms.questRadial != 0u);
     let bits = bitcast<u32>(depth);
     let ordered = select(bits ^ 0x80000000u, ~bits, (bits & 0x80000000u) != 0u);
-    questKeys[id.x] = ~ordered;
+    questKeys[id.x] = (~ordered) >> uniforms.questShift;
 }` });
         this.keyCompute = new Compute(this.device, this.keyShader, 'QuestStaticSortKeys');
         globalThis.__emsQuestStaticRenderer = this;
@@ -126,8 +141,9 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
             this.material.setParameter('questCovariance',cache);
         }
         const position = params.cameraNode.getPosition(), forward = params.cameraNode.forward;
-        // Match the existing CPU sorter's 1 mm / 0.001 rad invalidation policy.
-        const translated = Math.hypot(position.x-this.lastPosition[0],position.y-this.lastPosition[1],position.z-this.lastPosition[2]) > 0.001;
+        // Only depth ordering is reused inside this small translation bound.
+        // Both eyes' geometry continues to use the current pose every frame.
+        const translated = Math.hypot(position.x-this.lastPosition[0],position.y-this.lastPosition[1],position.z-this.lastPosition[2]) > (params.radialSorting?sortDistance:0.001);
         const rotated = !params.radialSorting && Math.hypot(forward.x-this.lastDirection[0],forward.y-this.lastDirection[1],forward.z-this.lastDirection[2]) > 0.001;
         if (changed || modelsChanged || translated || rotated || this.lastRadial !== params.radialSorting) {
             const xyz=[position.x,position.y,position.z],direction=[forward.x,forward.y,forward.z];
@@ -136,9 +152,10 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
             this.keyCompute.setParameter('questModels',this.models);
             this.keyCompute.setParameter('questOrigin',this.origin); this.keyCompute.setParameter('questForward',this.direction);
             this.keyCompute.setParameter('questLength',count); this.keyCompute.setParameter('questRadial',params.radialSorting?1:0);
+            this.keyCompute.setParameter('questShift',32-this.sortBits);
             this.keyCompute.setupDispatch(Math.ceil(count/256),1,1);
             this.device.computeDispatch([this.keyCompute],'QuestStaticSortKeys');
-            this.order = this.sorter.sort(this.keys,count,32,this.ids,true);
+            this.order = this.sorter.sort(this.keys,count,this.sortBits,this.ids,true);
             this.lastPosition = xyz; this.lastDirection = direction; this.lastRadial = params.radialSorting;
             this.sortRuns++;
         }
@@ -155,10 +172,12 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
         if (!covarianceCache) return;
         const allowed=permitsStaticGeometry(params.material);
         let dirty=false;
+        const caps=allowed&&support<1;
+        if(this.material.getDefine('QUEST_SMALL_CAPS')!==caps){this.material.setDefine('QUEST_SMALL_CAPS',caps);dirty=true;}
         if(this.material.getDefine('QUEST_STATIC_COVARIANCE')!==allowed) {
             this.material.setDefine('QUEST_STATIC_COVARIANCE',allowed);dirty=true;
         }
-        const corner=allowed ? cachedCornerSource : (params.material.hasShaderChunks && params.material.shaderChunks.wgsl.get('gsplatCornerVS')) || uncachedCornerSource;
+        const corner=allowed ? cappedCornerSource : (params.material.hasShaderChunks && params.material.shaderChunks.wgsl.get('gsplatCornerVS')) || uncachedCornerSource;
         if(this.material.shaderChunks.wgsl.get('gsplatCornerVS')!==corner){this.material.shaderChunks.wgsl.set('gsplatCornerVS',corner);dirty=true;}
         if(dirty)this.material.update();
     }

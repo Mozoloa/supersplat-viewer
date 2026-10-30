@@ -13,6 +13,13 @@ export let subgroup = variant.includes('subgroup');
 export let staticGpu = variant.startsWith('static-');
 export let triangles = variant.endsWith('-triangle');
 export let covarianceCache = variant.includes('-cov-');
+const requestedSupport = Number(new URL(location.href).searchParams.get('support')) || 0.8;
+if (![0.8,0.9,1].includes(requestedSupport))throw new Error('Invalid support extent');
+const requestedSortBits = Number(new URL(location.href).searchParams.get('sortbits')) || 24;
+if (![16,20,24,28,32].includes(requestedSortBits)) throw new Error('Invalid sort precision');
+const requestedSortDistance=Number(new URL(location.href).searchParams.get('sortdistance'))||0.004;
+if(![0.001,0.002,0.004].includes(requestedSortDistance))throw new Error('Invalid sort distance');
+export let support=1,sortBits=32,sortDistance=0.001;
 const requestedBatch = Number(new URL(location.href).searchParams.get('batch')) || 2048;
 if (![128,2048].includes(requestedBatch)) throw new Error('Invalid experimental batch size');
 export let batchSize = 128;
@@ -24,10 +31,13 @@ globalThis.__emsConfigureQuestExperiment = (device, staticScene) => {
     staticGpu = staticGpu && supported && staticScene;
     triangles = triangles && supported && staticScene;
     covarianceCache = covarianceCache && staticGpu;
+    support=covarianceCache?requestedSupport:1;
+    sortBits=staticGpu?requestedSortBits:32;
+    sortDistance=staticGpu?requestedSortDistance:0.001;
     batchSize = staticGpu ? requestedBatch : 128;
     depthTest = !staticGpu || new URL(location.href).searchParams.get('depth') === 'on';
     if (!subgroup) rounds = 8;
-    Object.assign(globalThis.__emsQuestExperiment, {rounds, subgroup, staticGpu, triangles, covarianceCache, batchSize, depthTest,
+    Object.assign(globalThis.__emsQuestExperiment, {rounds, subgroup, staticGpu, triangles, covarianceCache, sortBits, sortDistance, support, batchSize, depthTest,
         reason: staticGpu ? 'Static GPU renderer' : !staticScene ? 'Standard renderer for this media type' : !supported ? 'Standard renderer for this GPU' : 'Comparison renderer'});
 };
 `;

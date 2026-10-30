@@ -18,15 +18,15 @@ globalThis.__emsQuestVerifySort = async (counts = [1, 127, 255, 256, 257, 2047, 
     app.autoRender = false;
     const results = [];
     try {
-        for (const bits of [16, 20, 32]) for (const count of counts) {
+        for (const bits of [16, 20, 24, 32]) for (const explicitIds of [false,true]) for (const count of counts) {
             const keys = new Uint32Array(count);
             let seed = 12345;
-            for (let i = 0; i < count; i++) { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; keys[i] = bits === 32 ? seed : (seed >>> 12) & ((1 << bits) - 1); }
+            for (let i = 0; i < count; i++) { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; keys[i] = seed >>> (32 - bits); }
             const expected = Array.from({ length: count }, (_, i) => i).sort((a, b) => keys[a] - keys[b] || a - b);
             const buffer = new StorageBuffer(device, keys.byteLength, BUFFERUSAGE_COPY_SRC | BUFFERUSAGE_COPY_DST);
             const sorter = new ComputeRadixSort(device);
             const labels = new Uint32Array(count).map((_,i)=>count-i+100);
-            const values = bits === 32 ? new StorageBuffer(device, labels.byteLength, BUFFERUSAGE_COPY_SRC | BUFFERUSAGE_COPY_DST) : null;
+            const values = explicitIds ? new StorageBuffer(device, labels.byteLength, BUFFERUSAGE_COPY_SRC | BUFFERUSAGE_COPY_DST) : null;
             try {
                 buffer.write(0, keys);
                 values?.write(0, labels);
@@ -36,7 +36,7 @@ globalThis.__emsQuestVerifySort = async (counts = [1, 127, 255, 256, 257, 2047, 
                 const actual = new Uint32Array(bytes.buffer, bytes.byteOffset, count);
                 let mismatch = -1;
                 for (let i = 0; i < count; i++) if (actual[i] !== (values ? labels[expected[i]] : expected[i])) { mismatch = i; break; }
-                results.push({ count, bits, mismatch });
+                results.push({ count, bits, explicitIds, mismatch });
                 if (mismatch >= 0) throw new Error(`GPU sort permutation mismatch at ${mismatch} of ${count}`);
                 if (values) {
                     const sourceBytes = await values.read(0, count * 4, null, true);

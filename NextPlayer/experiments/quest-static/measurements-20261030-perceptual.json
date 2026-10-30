@@ -1,0 +1,1698 @@
+{
+  "date": "2026-10-30",
+  "device": "Meta Quest 3",
+  "browser": "154.1.0.32.54.1101200317",
+  "engine": "2.21.3",
+  "sourceBase": "2ba11852b8cf",
+  "sourceNote": "Working changes committed with this evidence; QA bundle includes helpers excluded from publication.",
+  "conditions": "Off-head tracked XR, five-second warmup then approximately 17 seconds measured, simulated movement +/-5 cm at sin(t/500 ms). Full 1680x1760 per eye. No clock overrides; observed GPU 545 MHz, thermal status 0. Individual timings are samples, not confidence intervals or a worn comfort assessment.",
+  "defaults": {
+    "sortBits": 24,
+    "radialSortTranslationMeters": 0.004,
+    "nonRadialSortTranslationMeters": 0.001,
+    "smallTriangleExtent": 0.8,
+    "fullTriangleRadiusPixels": 48,
+    "transitionStartRadiusPixels": 12
+  },
+  "baselineEvidence": "measurements-20261030-release.json; original VR-motion and dense AR-motion references repeated below with support=1,sortbits=32,sortdistance=0.001",
+  "cases": [
+    {
+      "source": "static-cov-subgroup2-triangle-motion-1793380160762.json",
+      "scene": "original",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 32,
+        "support": 1,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": true,
+      "capabilitySimulation": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 480,
+        "frameMs": 34.27020833337058,
+        "p95Ms": 37.599999994039536,
+        "fps": 29.17986346252383,
+        "gpuMs": 28.958719999999946,
+        "passes": {
+          "Forward": 20.84249600000001,
+          "QuestStaticSortKeys": 0.5140479999999996,
+          "RadixSort4bit-Histogram": 2.399846399999999,
+          "PrefixSumScan": 0.42502826666666643,
+          "PrefixSumAddBlock": 0.07058773333333335,
+          "RadixSort4bit-Reorder": 4.693060266666657
+        }
+      },
+      "sortsDuringMeasurement": 393,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-motion-1793380787485.json",
+      "scene": "original",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": true,
+      "capabilitySimulation": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 645,
+        "frameMs": 25.637674418623135,
+        "p95Ms": 31.19999998807907,
+        "fps": 39.00509787555469,
+        "gpuMs": 21.148721215503894,
+        "passes": {
+          "Forward": 18.989792644961202,
+          "QuestStaticSortKeys": 0.1816718883720934,
+          "RadixSort4bit-Histogram": 0.6380869457364342,
+          "PrefixSumScan": 0.11461179534883732,
+          "PrefixSumAddBlock": 0.019711603100775216,
+          "RadixSort4bit-Reorder": 1.2028142139534888
+        }
+      },
+      "sortsDuringMeasurement": 195,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-motion-1793381004497.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": true,
+      "capabilitySimulation": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 354,
+        "frameMs": 46.76412429378531,
+        "p95Ms": 51.60000002384186,
+        "fps": 21.38391373946661,
+        "gpuMs": 41.81381929943492,
+        "passes": {
+          "Forward": 37.79724004519782,
+          "QuestStaticSortKeys": 0.32249636158192035,
+          "RadixSort4bit-Histogram": 1.1866829378531079,
+          "PrefixSumScan": 0.22197080225988702,
+          "PrefixSumAddBlock": 0.031657220338983015,
+          "RadixSort4bit-Reorder": 2.249513943502825
+        }
+      },
+      "sortsDuringMeasurement": 195,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-ar-1793381326706.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-ar",
+      "motion": false,
+      "capabilitySimulation": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 303,
+        "frameMs": 54.565676567676434,
+        "p95Ms": 56,
+        "fps": 18.3265390058845,
+        "gpuMs": 49.64838653465351,
+        "passes": {
+          "Forward": 49.64752137293729
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "sortVerification": {
+        "cases": 64,
+        "failures": []
+      }
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-ar-motion-1793381572540.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-ar",
+      "motion": true,
+      "capabilitySimulation": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 267,
+        "frameMs": 61.944569288344866,
+        "p95Ms": 67.09999999403954,
+        "fps": 16.14346522202963,
+        "gpuMs": 56.089979685393175,
+        "passes": {
+          "Forward": 49.73961492134828,
+          "QuestStaticSortKeys": 0.5181516704119854,
+          "RadixSort4bit-Histogram": 1.8745259625468158,
+          "PrefixSumScan": 0.3370072209737833,
+          "PrefixSumAddBlock": 0.06381782771535575,
+          "RadixSort4bit-Reorder": 3.5512166591760317
+        }
+      },
+      "sortsDuringMeasurement": 172,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-ar-motion-1793381954712.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 32,
+        "sortDistance": 0.001,
+        "support": 1,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-ar",
+      "motion": true,
+      "capabilitySimulation": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 218,
+        "frameMs": 75.85596330286165,
+        "p95Ms": 79.59999999403954,
+        "fps": 13.182879189173452,
+        "gpuMs": 68.90960088073396,
+        "passes": {
+          "Forward": 57.218038605504574,
+          "QuestStaticSortKeys": 0.6352182018348618,
+          "RadixSort4bit-Histogram": 3.5049735045871557,
+          "PrefixSumScan": 0.6403288073394504,
+          "PrefixSumAddBlock": 0.08748154128440373,
+          "RadixSort4bit-Reorder": 6.808829651376151
+        }
+      },
+      "sortsDuringMeasurement": 190,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793382019360.json",
+      "scene": "original",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "capabilitySimulation": false,
+      "count": 1174066,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 713,
+        "frameMs": 23.17601683029453,
+        "p95Ms": 24.19999998807907,
+        "fps": 43.14805289116161,
+        "gpuMs": 19.004612757363294,
+        "passes": {
+          "Forward": 19.00415317812063
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "sortVerification": {
+        "cases": 64,
+        "failures": []
+      }
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-1793382066714.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 2,
+        "subgroup": true,
+        "triangles": true,
+        "staticGpu": true,
+        "covarianceCache": true,
+        "batchSize": 2048,
+        "depthTest": false,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 24,
+        "sortDistance": 0.004,
+        "support": 0.8,
+        "reason": "Static GPU renderer"
+      },
+      "mode": "immersive-vr",
+      "motion": false,
+      "capabilitySimulation": false,
+      "count": 1175708,
+      "eyes": {
+        "left": [
+          1680,
+          1760
+        ],
+        "right": [
+          1680,
+          1760
+        ]
+      },
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 392,
+        "frameMs": 42.16020408158704,
+        "p95Ms": 43.5,
+        "fps": 23.719050269890367,
+        "gpuMs": 37.87245191836731,
+        "passes": {
+          "Forward": 37.87195036734693
+        }
+      },
+      "sortsDuringMeasurement": 0,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": []
+    },
+    {
+      "source": "static-cov-subgroup2-triangle-flat-1793382109673.json",
+      "scene": "dense",
+      "config": {
+        "variant": "static-cov-subgroup2-triangle",
+        "rounds": 8,
+        "subgroup": false,
+        "triangles": false,
+        "staticGpu": false,
+        "covarianceCache": false,
+        "batchSize": 128,
+        "depthTest": true,
+        "engine": "2.21.3",
+        "production": false,
+        "build": "2ba11852b8cf-dirty",
+        "published": false,
+        "sortBits": 32,
+        "sortDistance": 0.001,
+        "support": 1,
+        "reason": "Standard renderer for this GPU"
+      },
+      "mode": "flat",
+      "motion": false,
+      "capabilitySimulation": true,
+      "count": 1175708,
+      "eyes": {},
+      "quality": {
+        "alpha": 0.00392156862745098,
+        "contribution": 0,
+        "foveation": 0,
+        "minPixelSize": 2,
+        "antialias": false,
+        "samples": 1
+      },
+      "summary": {
+        "frames": 555,
+        "frameMs": 30.592792792792793,
+        "p95Ms": 66.80000001192093,
+        "fps": 32.68743742269863,
+        "gpuMs": 27.44045457297292,
+        "passes": {
+          "GSplatIntervalCull": 0.007911553153153143,
+          "PrefixSumScan": 0.24998146306306204,
+          "GSplatIntervalScatter": 1.1041930378378426,
+          "GSplatIntervalWriteIndirectArgs": 0.017122018018018045,
+          "GSplatProjector": 2.5907384504504454,
+          "GSplatProjectorWriteIndirectArgs": 0.02361657657657663,
+          "RadixSort4bit-Histogram-Indirect": 1.900307834234226,
+          "PrefixSumAddBlock": 0.0412109261261262,
+          "RadixSort4bit-Reorder-Indirect": 12.42845958918916,
+          "Forward": 8.962726976576588
+        }
+      },
+      "sortsDuringMeasurement": null,
+      "validity": {
+        "diagnostic": false,
+        "startupErrors": 0,
+        "measuredErrors": 0,
+        "validTimings": true,
+        "errorFreeRun": true,
+        "expectedOptimizations": true
+      },
+      "errors": [],
+      "sortVerification": {
+        "cases": 64,
+        "failures": []
+      }
+    }
+  ],
+  "quality": [
+    {
+      "source": "original-uv-adaptive-sort24-quality.json",
+      "scene": "original",
+      "cases": [
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 107.43716247294373,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 8,
+              "changedPixels": 834151,
+              "pixelsOver4": 37,
+              "rmse": 0.3942143354571752,
+              "psnr": 56.216155344932595,
+              "meanReferenceBrightness": 107.43716247294373,
+              "alphaRmse": 0.015723445284088713,
+              "alphaMax": 2
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0.05,
+            0,
+            0,
+            10
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 111.4062582296176,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 8,
+              "changedPixels": 772409,
+              "pixelsOver4": 46,
+              "rmse": 0.3801151260062654,
+              "psnr": 56.53250057018983,
+              "meanReferenceBrightness": 111.4062582296176,
+              "alphaRmse": 0.01783954760845854,
+              "alphaMax": 2
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            -0.05,
+            0.02,
+            -0.25,
+            -10
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 82.98708806818182,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 7,
+              "changedPixels": 621339,
+              "pixelsOver4": 18,
+              "rmse": 0.3293893775047808,
+              "psnr": 57.7766118191959,
+              "meanReferenceBrightness": 82.98708806818182,
+              "alphaRmse": 0.01973855084879307,
+              "alphaMax": 3
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0,
+            0,
+            -0.5,
+            0
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 95.58332623106061,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 7,
+              "changedPixels": 649468,
+              "pixelsOver4": 13,
+              "rmse": 0.33635702457329175,
+              "psnr": 57.59479356788277,
+              "meanReferenceBrightness": 95.58332623106061,
+              "alphaRmse": 0.014746688673726954,
+              "alphaMax": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source": "dense-uv-adaptive-sort24-quality.json",
+      "scene": "dense",
+      "cases": [
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 62.38651244588745,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 15,
+              "changedPixels": 791280,
+              "pixelsOver4": 443,
+              "rmse": 0.3874233329640381,
+              "psnr": 56.36708814873148,
+              "meanReferenceBrightness": 62.38651244588745,
+              "alphaRmse": 0.02447362525931402,
+              "alphaMax": 8
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0.05,
+            0,
+            0,
+            10
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 53.35944512085137,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 15,
+              "changedPixels": 744575,
+              "pixelsOver4": 413,
+              "rmse": 0.37633405683042737,
+              "psnr": 56.61933316605253,
+              "meanReferenceBrightness": 53.35944512085137,
+              "alphaRmse": 0.024251511757225,
+              "alphaMax": 9
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            -0.05,
+            0.02,
+            -0.25,
+            -10
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 57.381559907106784,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 16,
+              "changedPixels": 714040,
+              "pixelsOver4": 307,
+              "rmse": 0.36404420558763684,
+              "psnr": 56.90772115124087,
+              "meanReferenceBrightness": 57.381559907106784,
+              "alphaRmse": 0.026033819163920998,
+              "alphaMax": 6
+            }
+          }
+        },
+        {
+          "support": 0.8,
+          "bits": 24,
+          "pose": [
+            0,
+            0,
+            -0.5,
+            0
+          ],
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 64.60254813762626,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 14,
+              "changedPixels": 800029,
+              "pixelsOver4": 375,
+              "rmse": 0.3853747637218978,
+              "psnr": 56.413138179414084,
+              "meanReferenceBrightness": 64.60254813762626,
+              "alphaRmse": 0.027468744536416775,
+              "alphaMax": 6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source": "original-temporal004-quality.json",
+      "scene": "original",
+      "cases": [
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0.004,
+            0,
+            0
+          ],
+          "splats": 1174066,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 8,
+            "changedPixels": 835355,
+            "pixelsOver4": 39,
+            "rmse": 0.39460920879973477,
+            "psnr": 56.20745928968439,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0.016189740083851996,
+            "alphaMax": 2
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            -0.004,
+            0,
+            0
+          ],
+          "splats": 1174066,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 8,
+            "changedPixels": 834236,
+            "pixelsOver4": 39,
+            "rmse": 0.39437787784548783,
+            "psnr": 56.21255269420277,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0.015830627474416995,
+            "alphaMax": 2
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0,
+            0.004,
+            0
+          ],
+          "splats": 1174066,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 8,
+            "changedPixels": 834845,
+            "pixelsOver4": 36,
+            "rmse": 0.3944906311241536,
+            "psnr": 56.2100697391086,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0.016520599105516568,
+            "alphaMax": 2
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0,
+            0,
+            0.004
+          ],
+          "splats": 1174066,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 8,
+            "changedPixels": 834181,
+            "pixelsOver4": 36,
+            "rmse": 0.3942690954015348,
+            "psnr": 56.21494887992536,
+            "meanReferenceBrightness": 107.43716247294373,
+            "alphaRmse": 0.016854996561581053,
+            "alphaMax": 2
+          }
+        }
+      ]
+    },
+    {
+      "source": "dense-temporal004-quality.json",
+      "scene": "dense",
+      "cases": [
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0.004,
+            0,
+            0
+          ],
+          "splats": 1175708,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 15,
+            "changedPixels": 793900,
+            "pixelsOver4": 433,
+            "rmse": 0.3877411040638635,
+            "psnr": 56.35996675686669,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0.026137539969763715,
+            "alphaMax": 8
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            -0.004,
+            0,
+            0
+          ],
+          "splats": 1175708,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 15,
+            "changedPixels": 792744,
+            "pixelsOver4": 429,
+            "rmse": 0.3875957033984372,
+            "psnr": 56.36322452596999,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0.02495938258893395,
+            "alphaMax": 8
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0,
+            0.004,
+            0
+          ],
+          "splats": 1175708,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 15,
+            "changedPixels": 794133,
+            "pixelsOver4": 430,
+            "rmse": 0.38778980109597366,
+            "psnr": 56.35887595044143,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0.02611812369373775,
+            "alphaMax": 8
+          }
+        },
+        {
+          "mode": "combined",
+          "width": 1680,
+          "height": 1760,
+          "sortOffset": [
+            0,
+            0,
+            0.004
+          ],
+          "splats": 1175708,
+          "repeat": {
+            "maxChannelDifference": 0,
+            "changedPixels": 0,
+            "pixelsOver4": 0,
+            "rmse": 0,
+            "psnr": null,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0,
+            "alphaMax": 0
+          },
+          "candidate": {
+            "maxChannelDifference": 15,
+            "changedPixels": 792029,
+            "pixelsOver4": 433,
+            "rmse": 0.38739045023172153,
+            "psnr": 56.36782539886891,
+            "meanReferenceBrightness": 62.38651244588745,
+            "alphaRmse": 0.024803066333965635,
+            "alphaMax": 8
+          }
+        }
+      ]
+    },
+    {
+      "source": "original-native-quality.json",
+      "scene": "original",
+      "cases": [
+        {
+          "eye": "left",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            -0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": 0,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 7.70867536976912,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 13,
+              "changedPixels": 128707,
+              "pixelsOver4": 527,
+              "rmse": 0.20994989696403576,
+              "psnr": 61.688490291925504,
+              "meanReferenceBrightness": 7.70867536976912,
+              "alphaRmse": 0.2162852015740176,
+              "alphaMax": 23
+            }
+          }
+        },
+        {
+          "eye": "left",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            -0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": -0.25,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 10.466074697871573,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 14,
+              "changedPixels": 168735,
+              "pixelsOver4": 525,
+              "rmse": 0.2286123263938775,
+              "psnr": 60.94881074624099,
+              "meanReferenceBrightness": 10.466074697871573,
+              "alphaRmse": 0.20498389758319618,
+              "alphaMax": 18
+            }
+          }
+        },
+        {
+          "eye": "right",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": 0,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 8.01115845959596,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 16,
+              "changedPixels": 132740,
+              "pixelsOver4": 533,
+              "rmse": 0.21067434717011835,
+              "psnr": 61.65857047228567,
+              "meanReferenceBrightness": 8.01115845959596,
+              "alphaRmse": 0.22101218967969388,
+              "alphaMax": 26
+            }
+          }
+        },
+        {
+          "eye": "right",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": -0.25,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1174066,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 10.983043605699855,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 15,
+              "changedPixels": 176149,
+              "pixelsOver4": 528,
+              "rmse": 0.23113504318694988,
+              "psnr": 60.85348770135093,
+              "meanReferenceBrightness": 10.983043605699855,
+              "alphaRmse": 0.2075857800057751,
+              "alphaMax": 19
+            }
+          }
+        }
+      ]
+    },
+    {
+      "source": "dense-native-exact-quality.json",
+      "scene": "dense",
+      "cases": [
+        {
+          "eye": "left",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            -0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": 0,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 35.333494543650794,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 26,
+              "changedPixels": 495028,
+              "pixelsOver4": 389,
+              "rmse": 0.3139283734057,
+              "psnr": 58.19419221301844,
+              "meanReferenceBrightness": 35.333494543650794,
+              "alphaRmse": 0.03838247367893693,
+              "alphaMax": 4
+            }
+          }
+        },
+        {
+          "eye": "left",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            -0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": -0.25,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 42.35110254329005,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 16,
+              "changedPixels": 597502,
+              "pixelsOver4": 345,
+              "rmse": 0.338646940841233,
+              "psnr": 57.53586047324639,
+              "meanReferenceBrightness": 42.35110254329005,
+              "alphaRmse": 0.031409226385960255,
+              "alphaMax": 5
+            }
+          }
+        },
+        {
+          "eye": "right",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": 0,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 35.5719540268759,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 17,
+              "changedPixels": 500030,
+              "pixelsOver4": 371,
+              "rmse": 0.31500689999085263,
+              "psnr": 58.16440227287866,
+              "meanReferenceBrightness": 35.5719540268759,
+              "alphaRmse": 0.03942566571261818,
+              "alphaMax": 3
+            }
+          }
+        },
+        {
+          "eye": "right",
+          "nativeProjection": [
+            0.9027383923530579,
+            0,
+            0,
+            0,
+            0,
+            0.8354789614677429,
+            0,
+            0,
+            0.2425125688314438,
+            -0.19318747520446777,
+            -1.0000200271606445,
+            -1,
+            0,
+            0,
+            -0.02000020071864128,
+            0
+          ],
+          "exactEyeTransform": true,
+          "close": -0.25,
+          "comparison": {
+            "mode": "combined",
+            "width": 1680,
+            "height": 1760,
+            "sortOffset": [
+              0.004,
+              0,
+              0
+            ],
+            "splats": 1175708,
+            "repeat": {
+              "maxChannelDifference": 0,
+              "changedPixels": 0,
+              "pixelsOver4": 0,
+              "rmse": 0,
+              "psnr": null,
+              "meanReferenceBrightness": 42.78843806367244,
+              "alphaRmse": 0,
+              "alphaMax": 0
+            },
+            "candidate": {
+              "maxChannelDifference": 24,
+              "changedPixels": 597980,
+              "pixelsOver4": 394,
+              "rmse": 0.34078471456492393,
+              "psnr": 57.48120147182004,
+              "meanReferenceBrightness": 42.78843806367244,
+              "alphaRmse": 0.02715296576404776,
+              "alphaMax": 5
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "qualityLimits": "Combined comparisons use transparent clear, 32-bit freshly sorted full triangles as reference, same current render pose. Native cases use captured Quest projection and eye transforms. Stale sort origin tested at 4 mm. Entire-frame RMS includes background; isolated RGB/alpha differences reach 26/255. No claim of mathematical identity or universal perceptual equivalence.",
+  "invalidationChecks": {
+    "fullDenseIds": 1175708,
+    "stationaryOrderReused": true,
+    "radialRotationReused": true,
+    "translationResorted": true,
+    "modelResorted": true,
+    "sourcePositionUploadReused": true,
+    "covarianceReusedForCamera": true,
+    "covarianceRebuiltForModel": true,
+    "customCornerPreserved": true,
+    "scaledModelCachedVsUncachedMaxDifference": 0
+  },
+  "excluded": [
+    "Two native Meta Browser crashes at 17:52:08 and 17:59:10, same VrShellGL.OVRMo/libchrome signature; no accepted timing. Runner now exits via engine app.xr.end to release presentation before native session end.",
+    "Initial ordered-cache shader omitted packed-center initialization before opacity fetch: transparent output and fake 89 FPS excluded. Correct ordered-cache motion regressed to 62.04 ms and implementation removed.",
+    "Initial adaptive-merge XR result lost spatial metadata and used different framing; excluded. Correct metadata image comparison failed quality target, so derivative not published."
+  ],
+  "research": [
+    {
+      "url": "https://arxiv.org/html/2609.03613",
+      "finding": "Tile-local ordering and selective exact repair; CUDA desktop speedups are not portable Quest measurements."
+    },
+    {
+      "url": "https://www.momentsingraphics.de/Siggraph2026.html",
+      "finding": "Point sampling/64-bit atomics with noise and aliasing tradeoffs, not a quality-equivalent drop-in."
+    },
+    {
+      "url": "https://diglib.eg.org/items/e87f07bc-8702-4c07-aabf-b4bc205a75b1",
+      "finding": "Opacity-aware hierarchical culling is a deeper future architecture, not implemented here."
+    },
+    {
+      "url": "https://websplatter.github.io/",
+      "finding": "Portable GPU radix, graphics rasterization and opacity-aware bounds informed investigation."
+    },
+    {
+      "url": "https://github.com/playcanvas/splat-transform",
+      "finding": "Official 3.10.3 adaptive merge tested at 50%; correct framing RMS1.86685, PSNR42.7086, max71, 142366 pixels over4. Not published."
+    }
+  ]
+}

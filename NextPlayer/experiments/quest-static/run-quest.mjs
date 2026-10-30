@@ -18,6 +18,9 @@ url.searchParams.set('backend', variant === 'webgl' ? 'webgl2' : 'webgpu');
 url.searchParams.set('experiment', variant);
 const bundleArg = process.argv.indexOf('--bundle');
 const body = (await readFile(bundleArg >= 0 ? process.argv[bundleArg+1] : path.join(directory, 'main.js'))).toString('base64');
+const assetArg=process.argv.indexOf('--asset');
+const asset=assetArg>=0?await readFile(process.argv[assetArg+1]):null;
+const assetUrl=new URL(url.searchParams.get('content'),url).href;
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { ws.addEventListener('open', resolve, { once: true }); ws.addEventListener('error', reject, { once: true }); });
 const pending = new Map(); let nextId = 0;
@@ -32,13 +35,13 @@ ws.addEventListener('message', event => {
     const m = JSON.parse(event.data);
     if (m.id) { const job = pending.get(m.id); pending.delete(m.id); m.error ? job?.reject(new Error(m.error.message)) : job?.resolve(m.result); }
     if (m.method === 'Fetch.requestPaused') {
-        send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/javascript' }, { name: 'Cache-Control', value: 'no-store' }], body })
-            .then(() => { served = true; }).catch(error => { console.error(error.message); ws.close(); });
-    }
-    if (m.method === 'Security.certificateError') {
-        // The selected LAN test origin uses AppServices' private CA.
-        const local = url.hostname === '192.168.1.35' && new URL(m.params.requestURL).origin === url.origin;
-        send('Security.handleCertificateError', {eventId:m.params.eventId, action:local?'continue':'cancel'}).catch(error=>console.error(error.message));
+        const isAsset=!!asset&&m.params.request.url===assetUrl;
+        const range=isAsset&&m.params.request.headers.Range?.match(/bytes=(\d+)-(\d*)/i);
+        const start=range?Number(range[1]):0,end=range?Math.min(asset.length-1,range[2]?Number(range[2]):asset.length-1):asset?.length-1;
+        const headers=[{name:'Content-Type',value:isAsset?'application/octet-stream':'application/javascript'},{name:'Cache-Control',value:'no-store'}];
+        if(isAsset){headers.push({name:'Content-Length',value:String(end-start+1)});if(range)headers.push({name:'Content-Range',value:`bytes ${start}-${end}/${asset.length}`});}
+        send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: range?206:200, responseHeaders:headers, body:isAsset?asset.subarray(start,end+1).toString('base64'):body })
+            .then(() => { if(!isAsset)served = true; }).catch(error => { console.error(error.message); ws.close(); });
     }
 });
 const evaluate = async (expression, gesture = false) => {
@@ -48,22 +51,28 @@ const evaluate = async (expression, gesture = false) => {
 };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 try {
-    if (url.hostname === '192.168.1.35') {
-        await send('Security.enable');
-        await send('Security.setOverrideCertificateErrors', {override:true});
-    }
     await send('Page.bringToFront');
-    await evaluate('(async()=>{const e=document.querySelector("pc-app");if(e?.ready){const {app}=await e.ready();if(app.xr.active)await app.xr.session.end();}})()');
-    await send('Fetch.enable', { patterns: [{ urlPattern: new URL('main.js*', url).href, requestStage: 'Request' }] });
+    await evaluate('(async()=>{const e=document.querySelector("pc-app");if(e?.ready){const {app}=await e.ready();if(app.xr.active)await new Promise((resolve,reject)=>app.xr.end(error=>error?reject(error):resolve()));}})()');
+    await send('Fetch.enable', { patterns: [{ urlPattern: new URL('main.js*', url).href, requestStage: 'Request' },...(asset?[{urlPattern:assetUrl,requestStage:'Request'}]:[])] });
     await send('Page.navigate', { url: url.href });
     let ready = false;
+    let acceptedDevelopmentCertificate=false;
     const deadline = Date.now() + 30000;
     while (!ready && Date.now() < deadline) {
         await delay(300);
-        if (!served) continue;
+        if (!served) {
+            // Meta Browser requires its private-CA acknowledgement again on
+            // debugger navigation. Use its normal interstitial only for this
+            // explicitly selected, already-authorized LAN development origin.
+            if(!acceptedDevelopmentCertificate&&url.hostname==='192.168.1.35'&&await evaluate('document.title==="Privacy error"&&document.body.innerText.includes("NET::ERR_CERT_AUTHORITY_INVALID")')){
+                acceptedDevelopmentCertificate=true;
+                await evaluate('document.getElementById("details-button").click();document.getElementById("proceed-link").click()',true);
+            }
+            continue;
+        }
         ready = await evaluate('!!globalThis.__emsQuestExperiment && /ready/i.test(document.querySelector("#headline")?.textContent || "")');
     }
-    if (!ready) throw new Error('Experimental player did not finish loading.');
+    if (!ready) throw new Error('Experimental player did not finish loading: '+JSON.stringify(await evaluate('({title:document.title,headline:document.querySelector("#headline")?.textContent,notice:document.querySelector("#notice")?.textContent})')));
     await send('Fetch.disable');
     await evaluate(`(async()=>{
         const {app}=await document.querySelector('pc-app').ready();
@@ -113,18 +122,32 @@ try {
         if(!p.flat&&!a.xr.active)throw new Error('XR session did not start: '+JSON.stringify(globalThis.__emsXrDebug));
         if (!p.flat&&!Object.keys(p.eyes).length) for (const v of a.root.findByName('camera').camera.camera.xrViews) p.eyes[v.eye || Object.keys(p.eyes).length]=[v.viewport.z,v.viewport.w];
         const staticRenderer=globalThis.__emsQuestStaticRenderer;
+        if(!p.flat){const c=a.root.findByName('camera'),inverse=c.getWorldTransform().clone().invert();p.xrProjections=c.camera.camera.xrViews.map(v=>({eye:v.eye,projection:Array.from(v._xrView.projectionMatrix),eyeTransform:Array.from(inverse.clone().mul2(inverse,v.viewInvOffMat).data)}));}
         const vertexCode=staticRenderer ? [...staticRenderer.material.variants.values()].map(s=>s.impl._vertexCode||'').join(' ') : '';
         const result={config:__emsQuestExperiment,eyes:p.eyes,rows:p.rows,errors:p.errors,backend:a.graphicsDevice.isWebGPU?'webgpu':'webgl2',
-            mode:p.flat?'flat':'immersive-${ar ? 'ar' : 'vr'}',capabilitySimulation:${process.argv.includes('--standard')},
-            activeOptimizations:{covarianceCache:vertexCode.includes('let a = questCovariance[')},
+            mode:p.flat?'flat':'immersive-${ar ? 'ar' : 'vr'}',capabilitySimulation:${process.argv.includes('--standard')},xrProjections:p.xrProjections,
+            activeOptimizations:{covarianceCache:vertexCode.includes('let a = questCovariance['),smallCaps:vertexCode.includes('let questUV=source.cornerUV*extent')},
             geometryCache:staticRenderer?.covarianceCache ? {bytes:staticRenderer.covarianceCache.output.byteSize,rebuilds:staticRenderer.covarianceCache.rebuilds} : null,
             motion:!!p.motion,sortsDuringMeasurement:globalThis.__emsQuestStaticRenderer ? __emsQuestStaticRenderer.sortRuns-p.sortStart : null,
             count:a.stats.frame.gsplats,quality:{alpha:a.scene.gsplat.alphaClipForward,contribution:a.scene.gsplat.minContribution,foveation:a.scene.gsplat.foveationStrength,minPixelSize:a.scene.gsplat.minPixelSize,antialias:a.scene.gsplat.antiAlias,samples:a.graphicsDevice.samples},
             adapter:{vendor:a.graphicsDevice.gpuAdapter?.info.vendor,architecture:a.graphicsDevice.gpuAdapter?.info.architecture},
             features:{minSubgroup:a.graphicsDevice.minSubgroupSize,maxSubgroup:a.graphicsDevice.maxSubgroupSize,f16:a.graphicsDevice.supportsShaderF16}};
-        a.off('frameend',p.sample);if(p.motion)a.off('update',p.motion);if(a.xr.active)await a.xr.session.end();return result;
+        a.off('frameend',p.sample);if(p.motion)a.off('update',p.motion);
+        if(a.xr.active)await new Promise((resolve,reject)=>a.xr.end(error=>error?reject(error):resolve()));return result;
     })()`);
     result.scene = url.searchParams.get('content');
+    result.assetReplacement=asset?path.basename(process.argv[assetArg+1]):null;
+    if(process.argv.includes('--image')){
+        result.imageComparison=await evaluate("__emsQuestVerifyImage(1680,1760,'draw-state')");
+        const chunks=[];
+        for(let offset=0;offset<1680*1760*4;offset+=1024*1024){
+            const data=await evaluate(`(()=>{const a=__emsQuestComparisonPixels.candidate.subarray(${offset},${offset+1024*1024});let s='';for(let i=0;i<a.length;i+=16384)s+=String.fromCharCode(...a.subarray(i,i+16384));return btoa(s);})()`);
+            chunks.push(Buffer.from(data,'base64'));
+        }
+        await mkdir(path.join(directory,'results'),{recursive:true});
+        result.imageFile=path.join(directory,'results',`${asset?path.basename(process.argv[assetArg+1]):'original'}-${Date.now()}.rgba`);
+        await writeFile(result.imageFile,Buffer.concat(chunks));
+    }
     if (process.argv.includes('--verify')) {
         try { result.sortVerification = await evaluate('__emsQuestVerifySort()'); }
         catch (error) { result.sortVerificationError = error.message; process.exitCode = 1; }
@@ -141,14 +164,13 @@ try {
         validTimings: result.rows.every(r => Number.isFinite(r.interval) && r.interval > 0 && (result.backend !== 'webgpu' || Number.isFinite(r.gpu) && r.gpu > 0 && r.gpu < 1000)),
         errorFreeRun: result.errors.length === 0 && !result.sortVerificationError
     };
-    result.validity.expectedOptimizations = !result.config.covarianceCache || result.activeOptimizations.covarianceCache;
+    result.validity.expectedOptimizations = (!result.config.covarianceCache || result.activeOptimizations.covarianceCache)&&(!result.config.staticGpu||result.config.support>=1||result.activeOptimizations.smallCaps);
     if (!result.validity.errorFreeRun || !result.validity.validTimings || !result.validity.expectedOptimizations) process.exitCode = 1;
     await mkdir(path.join(directory,'results'),{recursive:true});
     const output=path.join(directory,'results',`${variant}${flat?'-flat':ar?'-ar':''}${result.motion?'-motion':''}-${Date.now()}.json`);
     await writeFile(output,JSON.stringify(result,null,2));
-    console.log(JSON.stringify({output,mode:result.mode,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError}));
+    console.log(JSON.stringify({output,mode:result.mode,config:result.config,motion:result.motion,sortsDuringMeasurement:result.sortsDuringMeasurement,summary:result.summary,eyes:result.eyes,count:result.count,features:result.features,validity:result.validity,errors:result.errors.length,sortVerification:result.sortVerification,sortVerificationError:result.sortVerificationError,imageFile:result.imageFile}));
 } finally {
     await send('Fetch.disable').catch(()=>{});
-    if (url.hostname === '192.168.1.35') await send('Security.setOverrideCertificateErrors', {override:false}).catch(()=>{});
     ws.close();
 }

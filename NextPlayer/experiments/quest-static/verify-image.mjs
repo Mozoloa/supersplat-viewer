@@ -23,7 +23,7 @@ function triangle(device, size) {
 }
 
 function compare(a, b) {
-    let squared = 0, max = 0, changed = 0, over4 = 0, signal = 0;
+    let squared = 0, max = 0, changed = 0, over4 = 0, signal = 0,alphaSquared=0,alphaMax=0;
     for (let i=0;i<a.length;i+=4) {
         let pixelMax = 0;
         for (let c=0;c<3;c++) {
@@ -32,17 +32,18 @@ function compare(a, b) {
             signal += a[i+c];
         }
         changed += pixelMax > 0; over4 += pixelMax > 4;
+        const alphaDelta=Math.abs(a[i+3]-b[i+3]);alphaSquared+=alphaDelta*alphaDelta;alphaMax=Math.max(alphaMax,alphaDelta);
     }
     const mse = squared / (a.length / 4 * 3);
     return { maxChannelDifference: max, changedPixels: changed, pixelsOver4: over4,
         rmse: Math.sqrt(mse), psnr: mse ? 10 * Math.log10(255*255/mse) : null,
-        meanReferenceBrightness: signal / (a.length / 4 * 3) };
+        meanReferenceBrightness: signal / (a.length / 4 * 3),alphaRmse:Math.sqrt(alphaSquared/(a.length/4)),alphaMax };
 }
 
 // Freeze projection and order only inside this offline comparison. Live XR
 // always continues to project the current head pose on every frame.
-globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'geometry') => {
-    if (!['geometry', 'static-shader', 'draw-state'].includes(mode)) throw new Error('Unknown image comparison mode.');
+globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'geometry', sortOffset = [0,0,0]) => {
+    if (!['geometry', 'static-shader', 'draw-state', 'sort','support','combined'].includes(mode)) throw new Error('Unknown image comparison mode.');
     const { app } = await document.querySelector('pc-app').ready();
     if (app.xr.active) throw new Error('End XR before comparing immutable flat frames.');
     const device = app.graphicsDevice;
@@ -53,7 +54,7 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
     const texture = new Texture(device, { name: 'Quest image comparison', width, height, format: PIXELFORMAT_RGBA8,
         mipmaps: false, minFilter: FILTER_NEAREST, magFilter: FILTER_NEAREST });
     const target = new RenderTarget({ colorBuffer: texture, depth: true, samples: 1 });
-    let renderer, originalMesh, prepare, originalChunk, referenceMesh, originalInstances, hybrid, frameUpdate, defines, originalSize, originalDepth;
+    let renderer, originalMesh, prepare, originalChunk, referenceMesh, originalInstances, hybrid, frameUpdate, defines, originalSize, originalDepth,manager,originalBits;
     const frame = () => new Promise(resolve => { app.once('frameend', resolve); app.renderNextFrame = true; });
     const read = async () => { await frame(); return texture.read(0,0,width,height,{ immediate: true }); };
     app.autoRender = false;
@@ -66,7 +67,7 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
         for (const cam of app.renderer.gsplatDirector.camerasMap.values()) {
             for (const layer of cam.layersMap.values()) {
                 const r=layer.gsplatManager?.renderer;
-                if (r?.projector || r?.sorter) renderer=r;
+                if (r?.projector || r?.sorter) {renderer=r;manager=layer.gsplatManager;}
             }
         }
         if (!renderer) throw new Error('No hybrid renderer for image comparison.');
@@ -80,6 +81,15 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
         originalChunk = renderer.material.shaderChunks.wgsl.get('gsplatHybridVS');
         const size = Number(renderer.material.defines.get('{GSPLAT_INSTANCE_SIZE}'));
         originalSize=size; originalDepth=renderer.material.depthTest;
+        originalBits=renderer.sortBits;
+        const forceSort=(bits,offset=[0,0,0])=>{
+            const node=manager.cameraNode,position=node.getPosition().clone();
+            try{
+                node.setPosition(position.x+offset[0],position.y+offset[1],position.z+offset[2]);
+                renderer.sortBits=bits;renderer.lastPosition[0]=Infinity;
+                prepare.call(renderer,manager.world,manager.world.getState(manager.world.lastWorldStateVersion),manager._fillRenderViewParams());
+            }finally{node.setPosition(position);}
+        };
         if (!Number.isInteger(size) || size <= 0) throw new Error('Invalid splat instance size.');
         if (mode === 'geometry') referenceMesh = quad(device,size);
         else if(mode === 'draw-state') {
@@ -91,7 +101,7 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
             if (hybrid) throw new Error('Static shader comparison needs the static GPU renderer.');
             frameUpdate = renderer.frameUpdate;
             renderer.frameUpdate = () => {};
-            defines = ['QUEST_STATIC_COVARIANCE'].map(name => [name, renderer.material.getDefine(name)]);
+            defines = mode==='sort'?[]:[mode==='support'||mode==='combined'?'QUEST_SMALL_CAPS':'QUEST_STATIC_COVARIANCE'].map(name => [name, renderer.material.getDefine(name)]);
         }
         renderer.prepareRenderView = function () {
             this.meshInstance.setIndirect(null,-1);
@@ -106,6 +116,7 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
         }
         if (defines) for (const [name] of defines) renderer.material.setDefine(name, false);
         renderer.material.update();
+        if(mode==='sort'||mode==='combined')forceSort(32);
         setShader(globalThis.__emsQuestRasterShaders.baseline);
         await frame();
         const baseline = await read();
@@ -115,14 +126,16 @@ globalThis.__emsQuestVerifyImage = async (width = 1680, height = 1760, mode = 'g
         renderer.material.depthTest=originalDepth;
         if (defines) for (const [name, value] of defines) renderer.material.setDefine(name, value);
         renderer.material.update();
+        if(mode==='sort'||mode==='combined')forceSort(originalBits,sortOffset);
         setShader(globalThis.__emsQuestRasterShaders.selected);
         await frame();
         const candidate = await read();
         globalThis.__emsQuestComparisonPixels = { width, height, baseline, candidate };
-        return { mode, width, height, splats: count, repeat: compare(baseline,repeat), candidate: compare(baseline,candidate) };
+        return { mode, width, height, sortOffset, splats: count, repeat: compare(baseline,repeat), candidate: compare(baseline,candidate) };
     } finally {
         if (renderer && prepare) {
             renderer.prepareRenderView = prepare;
+            renderer.sortBits=originalBits;
             renderer.meshInstance.mesh = originalMesh;
             renderer.meshInstance.instancingCount = originalInstances;
             renderer.material.setDefine('{GSPLAT_INSTANCE_SIZE}',originalSize);

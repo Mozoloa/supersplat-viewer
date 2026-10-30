@@ -19,6 +19,77 @@ player diagnostics include the source commit, and the script URL uses the bundle
 content hash. Unsupported GPUs and non-static media use the standard renderer
 within the shared player; the diagnostics identify which path is active.
 
+## Current default: movement and perceptual optimization, 30 October
+
+The existing Experimental option now uses 24-bit depth keys (six radix passes
+instead of eight), reuses radial depth order within 4 mm of translation, and
+trims low-weight triangle caps on small projected splats. The triangle extent
+starts at 0.8 and smoothly returns to 1 between projected radii of 12 and 48 px.
+Scaling UVs before constructing the vertex offset avoids extra per-vertex work.
+Both eyes still use the current pose every frame. Scene/model changes invalidate
+ordering immediately. Non-radial sorting retains its 1 mm movement threshold.
+These are measured perceptual approximations, not mathematically lossless changes.
+
+| Scene / mode | Previous published experiment | Current default |
+| --- | ---: | ---: |
+| Original, VR stationary | 24.81 ms / 40.31 FPS | 23.18 ms / 43.15 FPS |
+| Original, VR simulated movement | 34.27 ms / 29.18 FPS | 25.64 ms / 39.01 FPS |
+| Dense, VR stationary | 49.29 ms / 20.29 FPS | 42.16 ms / 23.72 FPS |
+| Dense, VR simulated movement | 58.65 ms / 17.05 FPS | 46.76 ms / 21.38 FPS |
+| Dense, AR stationary | 62.47 ms / 16.01 FPS | 54.57 ms / 18.33 FPS |
+| Dense, AR simulated movement | 75.86 ms / 13.18 FPS | 61.94 ms / 16.14 FPS |
+
+VR movement gains are approximately **34% on the original and 25% on the dense
+scene**. AR movement improves about **22%**. This does not meet a 2x gain over
+the preceding experiment or the headset's refresh rate. These remain off-head,
+five-second-warmup / 17-second-sample tests, not a worn comfort assessment.
+The original VR-motion and dense AR-motion references were repeated with the
+previous settings during this investigation; the other references are recorded
+in the preceding release evidence. All runs keep all splats, 1680x1760 per eye,
+alpha cutoff 1/255, and zero contribution culling/foveation.
+
+Frozen comparisons cover both scenes, shifted/closer views, both native Quest
+eye projections and a stale 4 mm sort origin with an unchanged render pose.
+RGB RMS stays below 0.40 on an 8-bit scale (over 56 dB PSNR). Native-eye images
+have fewer than 0.02% of pixels differing by more than four RGB levels, although
+isolated RGB and alpha differences reach 26 levels. Reference repeats are exact.
+These measurements support the perceptual choice on these scenes; they do not
+prove invisibility for every scene, passthrough background, or head movement.
+Large splats retain their full footprint. The exact covariance cache remains
+pixel-identical under the existing scaled-model check. All 64 radix permutation
+cases pass, spanning the full 16/20/24/32-bit range, explicit IDs and partial groups.
+Standard-renderer capability fallback disables the new settings.
+
+Several investigated alternatives were removed after measurement:
+
+| Experiment | Observed reason to reject |
+| --- | --- |
+| GPU visibility compaction | 99.73% of dense-scene splats remained visible; added work made it slower |
+| Sorted center/color/covariance cache | Small stationary gain, but movement regressed to 62.04 ms |
+| Polynomial Gaussian evaluation | Dense stationary frame time worsened to 58.85 ms |
+| Adaptive 50% splat merging with current SplatTransform | Image RMS 1.87, max 71, about 4.8% of pixels over four levels |
+| 20-bit depth ordering | Larger image differences than the chosen 24-bit keys |
+
+Research included [TileGS](https://arxiv.org/html/2609.03613),
+[Gaussian Point Splatting](https://www.momentsingraphics.de/Siggraph2026.html),
+[opacity-based occlusion culling](https://diglib.eg.org/items/e87f07bc-8702-4c07-aabf-b4bc205a75b1),
+[WebSplatter](https://websplatter.github.io/), and the current
+[PlayCanvas SplatTransform](https://github.com/playcanvas/splat-transform).
+Tile-local ordering and opacity-aware culling remain relevant architectural
+directions. Published CUDA/native desktop speedups are not Quest WebGPU results;
+stochastic point rendering and asset simplification also introduce quality tradeoffs.
+No paper's claimed speedup is counted in the table above.
+
+The QA runner now ends sessions through the engine's `app.xr.end`, which releases
+the WebGPU presentation binding, instead of calling the native session directly.
+Two native browser crashes earlier in testing were excluded; subsequent VR and
+AR runs completed without captured GPU/JavaScript errors. This is a corrected
+test lifecycle, not proof that all native browser crashes are fixed.
+Compact timing and image evidence is in
+[measurements-20261030-perceptual.json](measurements-20261030-perceptual.json).
+For an A/B reference, use `support=1&sortbits=32&sortdistance=0.001`; ordinary
+Experimental launches require no query settings and select the current default.
+
 ## Result on Quest 3, 29 October 2026
 
 One static scene, **1,174,066 splats**, **1680 × 1760 per eye**, alpha cutoff
@@ -136,9 +207,9 @@ Compact evidence and research findings are in
    resident on the GPU. It reuses the order during rotation and sorts again after
    translation, scene changes, or object transforms. Both eyes still project and
    cull on every frame. Transform changes upload matrices, not the full centers
-   array. The movement threshold matches the existing CPU sorter's 1 mm policy.
-   Depth keys retain all 32 bits of the computed float depth ordering; ties remain
-   stable. The standard textured splat renderer retains its original color data.
+   array. The initial release used 1 mm and all 32 depth-key bits; the current
+   defaults and measured approximation bounds are documented above. Equal-key
+   ordering stays stable. The standard textured renderer retains its color data.
 2. **Use subgroup voting for radix scatter.** The Quest's 64/128-lane subgroups
    replace the shared atomic bitmasks. Two rounds per workgroup were fastest in
    the measured useful configurations. The hybrid reorder stage fell from about
@@ -167,7 +238,7 @@ they never edit `node_modules` or production bundles.
 
 ## Validation and limits
 
-- Stable permutation tests cover 16-, 20- and 32-bit keys, supplied IDs, ties,
+- Stable permutation tests cover 16-, 20-, 24- and 32-bit keys, supplied IDs, ties,
   partial workgroups, and counts from 1 to 200,003.
 - Full-scene checks validate all 1,174,066 IDs before and after translation:
   no missing/duplicate splats, monotonic depth keys and stable equal-key order.
@@ -197,8 +268,10 @@ Use the project's existing Quest launcher and a separate authenticated HTTPS tab
 at `/next-player-experimental/index.html?quest-benchmark=1&content=...`.
 The runner requires that exact CDP target ID and benchmark marker. It intercepts
 only that page's `main.js`; the user's ordinary player tab and server remain
-unchanged. The AppServices LAN private-CA exception is limited to the selected
-origin and debugger session. No SSH tunnel, localhost URL or copied cookie is needed.
+unchanged. If the selected LAN development origin shows its known private-CA
+interstitial, the runner acknowledges that origin through the normal browser UI
+once. It does not toggle debugger certificate overrides or disable TLS checking
+globally. No SSH tunnel, localhost URL or copied cookie is needed.
 
 ```sh
 npm run build:quest-experiment
