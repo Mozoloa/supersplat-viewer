@@ -23,7 +23,12 @@ const bundle = await rollup({
 await mkdir(path.join(output, 'schema'), { recursive: true });
 await bundle.write({ file: path.join(output, 'main.js'), format: 'esm', sourcemap: false });
 await bundle.close();
-const bundleHash = createHash('sha256').update(await readFile(path.join(output, 'main.js'))).digest('hex').slice(0,16);
+// Shader sources can carry checkout-specific CRLFs into the generated module.
+// Hash the canonical bytes that Git and the Linux deployment will publish.
+const modulePath = path.join(output, 'main.js');
+const moduleSource = (await readFile(modulePath, 'utf8')).replace(/\r\n/g, '\n');
+await writeFile(modulePath, moduleSource);
+const bundleHash = createHash('sha256').update(moduleSource).digest('hex').slice(0,16);
 const html = (await readFile(path.join(root, 'src/index.html'), 'utf8')).replace(/\.\/main\.js\?v=[^"']+/, `./main.js?v=${bundleHash}`);
 await Promise.all([
     writeFile(path.join(output, 'index.html'), html),
