@@ -171,6 +171,11 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     const definition = await loadSceneDefinition(contentUrl, query.get('manifest'));
     const manifest = definition.manifest;
     const isAnimated = manifest.kind === 'animated-splat';
+    const experimental = globalThis as typeof globalThis & {
+        __emsConfigureQuestExperiment?: (device: typeof app.graphicsDevice, staticScene: boolean) => void;
+        __emsQuestExperiment?: { reason?: string; build?: string };
+    };
+    experimental.__emsConfigureQuestExperiment?.(app.graphicsDevice, !isAnimated && manifest.asset.encoding !== 'gstex');
     let streamSource: SplatStreamSource | null = null;
     let videoSource: SplatVideoSource | null = null;
     let localCachePreparing = false;
@@ -214,6 +219,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
     const xrGpuBindingPresent = typeof (globalThis as typeof globalThis & { XRGPUBinding?: unknown }).XRGPUBinding !== 'undefined';
 
     const staticDiagnostics = [
+        ...(experimental.__emsQuestExperiment ? [`Experimental: ${experimental.__emsQuestExperiment.reason} · ${experimental.__emsQuestExperiment.build || 'development'}`] : []),
         `Placement: ${definition.authored ? 'EMS metadata' : 'camera fallback'}`,
         `Coordinates: RH · +Y up · -Z forward · meters`,
         `Source camera: ${manifest.captureCamera.intrinsics.width}×${manifest.captureCamera.intrinsics.height}`,

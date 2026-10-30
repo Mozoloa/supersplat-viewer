@@ -1,13 +1,23 @@
 # Quest static WebGPU experiment
 
 This separate build reuses the authoritative NextPlayer entry point, controls,
-styles and asset loading. It does not modify the production build or deployment.
+styles and asset loading. NGTY's existing 3D player setting selects it through
+`/next-player-experimental/`; the regular NextPlayer remains available separately.
 Generated files and raw device measurements live in the ignored
 `NextPlayer/experimental-builds/quest-static/` directory.
 
 From `NextPlayer`, run `npm run build:quest-experiment`. The default experimental
-variant is `static-subgroup2-triangle`; `experiment.json` lists comparison modes.
+variant is `static-cov-subgroup2-triangle`; `experiment.json` lists comparison modes.
 The normal `npm run build` remains unchanged.
+
+For deployment, commit the player source, then run
+`npm run build:quest-experiment -- --publish`. This writes the release bundle to
+`webapp/public/next-player-experimental`, without the offline verification helpers.
+Commit those generated release artifacts with the NGTY launcher changes, then
+deploy that frontend commit using the existing Compose service. The manifest and
+player diagnostics include the source commit, and the script URL uses the bundle
+content hash. Unsupported GPUs and non-static media use the standard renderer
+within the shared player; the diagnostics identify which path is active.
 
 ## Result on Quest 3, 29 October 2026
 
@@ -49,8 +59,9 @@ The denser scene has 1,175,708 splats, almost the same count as the original, bu
 its draw stage costs more than twice as much. Its WebGL reference measured
 59.81 ms / 16.72 FPS; returning to quads measured 69.79 ms / 14.33 FPS. The
 cache is a small additional gain, roughly 3–5% in these comparisons. It costs
-about **36 MiB** per scene and therefore remains **optional**, with the existing
-experimental default unchanged. All runs retain the quality settings above.
+about **36 MiB** per scene. It is now enabled in the experimental option requested
+as NGTY's default; the regular NextPlayer option remains available. All runs retain
+the quality settings above.
 
 Frozen image comparisons at 1680 × 1760 are pixel-identical with caching on/off,
 including after model scaling, on both scenes. Checks also cover cache reuse

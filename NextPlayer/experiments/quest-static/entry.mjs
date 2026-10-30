@@ -1,4 +1,4 @@
-import '../../src/main.ts';
+import './player-entry.mjs';
 import './verify-image.mjs';
 import './verify-static.mjs';
 import './verify-geometry.mjs';

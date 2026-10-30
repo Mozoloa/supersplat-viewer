@@ -6,14 +6,24 @@ const subgroupReorder = readFileSync(new URL('./subgroup-reorder.wgsl', import.m
 const configId = '\0quest-static-config';
 export const variants = ['baseline', 'subgroup', 'subgroup2', 'subgroup2-triangle', 'static-subgroup2', 'static-subgroup2-triangle', 'static-cov-subgroup2-triangle', 'cpu', 'webgl'];
 const configSource = `
-const variant = new URL(location.href).searchParams.get('experiment') || 'static-subgroup2-triangle';
+const variant = new URL(location.href).searchParams.get('experiment') || 'static-cov-subgroup2-triangle';
 if (!${JSON.stringify(variants)}.includes(variant)) throw new Error('Unknown Quest experiment: '+variant);
-export const rounds = variant.includes('subgroup2') ? 2 : 8;
-export const subgroup = variant.includes('subgroup');
-export const staticGpu = variant.startsWith('static-');
-export const triangles = variant.endsWith('-triangle');
-export const covarianceCache = variant.includes('-cov-');
+export let rounds = variant.includes('subgroup2') ? 2 : 8;
+export let subgroup = variant.includes('subgroup');
+export let staticGpu = variant.startsWith('static-');
+export let triangles = variant.endsWith('-triangle');
+export let covarianceCache = variant.includes('-cov-');
 globalThis.__emsQuestExperiment = { variant, rounds, subgroup, triangles, staticGpu, covarianceCache, engine: '2.21.3', production: false };
+globalThis.__emsConfigureQuestExperiment = (device, staticScene) => {
+    const supported = device.isWebGPU && device.supportsSubgroups && device.supportsSubgroupId && device.minSubgroupSize >= 64 && device.maxSubgroupSize <= 128;
+    subgroup = subgroup && supported;
+    staticGpu = staticGpu && supported && staticScene;
+    triangles = triangles && supported && staticScene;
+    covarianceCache = covarianceCache && staticGpu;
+    if (!subgroup) rounds = 8;
+    Object.assign(globalThis.__emsQuestExperiment, {rounds, subgroup, staticGpu, triangles, covarianceCache,
+        reason: staticGpu ? 'Static GPU renderer' : !staticScene ? 'Standard renderer for this media type' : !supported ? 'Standard renderer for this GPU' : 'Comparison renderer'});
+};
 `;
 
 function replaceOnce(code, from, to, label) {
@@ -21,14 +31,16 @@ function replaceOnce(code, from, to, label) {
     return code.replace(from, to);
 }
 
-export function questEngineExperiment() {
+export function questEngineExperiment({ build = 'development', published = false } = {}) {
     return {
         name: 'quest-static-experiment',
         resolveId(id) {
             if (id === 'quest-static-config') return configId;
             if (id === 'quest-static-renderer') return fileURLToPath(new URL('./static-gpu-renderer.mjs', import.meta.url));
         },
-        load(id) { if (id === configId) return configSource; },
+        load(id) {
+            if (id === configId) return configSource + `\nglobalThis.__emsQuestExperiment.build = ${JSON.stringify(build)};\nglobalThis.__emsQuestExperiment.published = ${published};`;
+        },
         transform(code, id) {
             id = id.replaceAll('\\', '/');
             if (!id.includes('/node_modules/playcanvas/')) return null;
