@@ -137,6 +137,35 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
 
     const contentUrl = new URL(contentParam, location.href).href;
     if (query.get('projection') === 'stereo') return playStereoVideo(app, camera, contentRoot, contentUrl, ui);
+    let sceneLoaded!: () => void;
+    const sceneReady = new Promise<void>(resolve => { sceneLoaded = resolve; });
+    let additions = sceneReady;
+    window.addEventListener('message', event => {
+        if (event.origin !== location.origin || event.source !== window.opener
+            || event.data?.type !== 'loadSplat' || event.data.mode !== 'add') return;
+        const assetUrl = new URL(event.data.contentUrl, location.href);
+        if (assetUrl.origin !== location.origin) return;
+        additions = additions.then(async () => {
+            const added = await loadSceneDefinition(assetUrl.href, null);
+            if (added.manifest.kind === 'animated-splat') throw new Error('Adding animated files to a scene is not supported yet.');
+            const root = new Entity('added-scene');
+            applyMatrix(root, authoredContent.clone().invert().mul(rowMajorToPlayCanvas(added.manifest.contentToWorld)));
+            contentRoot.addChild(root);
+            ui.headline.textContent = 'Adding to scene…';
+            try {
+                if (added.manifest.asset.encoding === 'gstex') {
+                    const textured = await loadTexturedSplat(app, camera, root, added.assetUrl, reportProgress);
+                    loadedSplats += textured.count;
+                    window.addEventListener('beforeunload', textured.destroy, { once: true });
+                } else {
+                    const splat = await loadSplat(app, root, added.assetUrl, reportProgress);
+                    loadedSplats += splat.gsplat?.resource?.numSplats ?? 0;
+                }
+                refreshDiagnostics();
+                ui.headline.textContent = 'Added to scene';
+            } catch (error) { root.destroy(); throw error; }
+        }).catch(error => { ui.notice.textContent = error instanceof Error ? error.message : String(error); });
+    });
     ui.headline.textContent = 'Reading authored placement…';
     camera.addComponent('camera');
     const xrManager = app.xr;
@@ -435,6 +464,7 @@ const boot = async (app: AppBase, camera: Entity, contentRoot: Entity): Promise<
         const splat = await loadSplat(app, contentRoot, definition.assetUrl, reportProgress);
         loadedSplats = splat.gsplat?.resource?.numSplats ?? 0;
     }
+    sceneLoaded();
     if (animationPlayer) {
         animationReady = true;
         ui.playback.hidden = false;
